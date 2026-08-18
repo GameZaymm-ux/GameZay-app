@@ -1,0 +1,326 @@
+// ==============================================================================
+// GameZay MM - PostgreSQL & Prisma ORM Schema
+// Tailored for Myanmar Game Account Escrow Marketplace
+// Supports: eFootball, Mobile Legends, PUBG Mobile, Clash of Clans
+// Payments: KBZPay, WaveMoney, AyaPay, CB Pay, USDT TRC20 / BEP20
+// ==============================================================================
+
+datasource db {
+  provider = "postgresql"
+  url      = env("DATABASE_URL")
+}
+
+generator client {
+  provider = "prisma-client-js"
+}
+
+enum Role {
+  BUYER
+  SELLER
+  VERIFIED_SELLER
+  ADMIN
+}
+
+enum GameType {
+  EFOOTBALL
+  MOBILE_LEGENDS
+  PUBG_MOBILE
+  CLASH_OF_CLANS
+  FREE_FIRE
+  GENSHIN_IMPACT
+}
+
+enum ListingStatus {
+  DRAFT
+  AVAILABLE
+  IN_ESCROW
+  SOLD
+  REJECTED
+  CANCELLED
+}
+
+enum EscrowStatus {
+  PENDING_PAYMENT_PROOF    // Buyer created order, waiting for bank slip
+  PAYMENT_VERIFYING        // Admin is checking the KPay / Wave slip
+  ESCROW_LOCKED            // Money confirmed locked in GameZay platform account
+  CREDENTIALS_DISPATCHED   // Buyer received decrypted game login details
+  INSPECTION_PERIOD        // 24-hour buyer guarantee timer active
+  COMPLETED                // Buyer confirmed or 24h passed -> Payout to Seller
+  DISPUTED                 // Buyer/Seller opened dispute
+  REFUNDED                 // Admin approved refund to buyer
+}
+
+enum PaymentMethod {
+  KBZ_PAY
+  WAVE_PAY
+  AYA_PAY
+  CB_PAY
+  USDT_TRC20
+  USDT_BEP20
+}
+
+enum PayoutStatus {
+  REQUESTED
+  PROCESSING
+  TRANSFERRED
+  REJECTED
+}
+
+enum DisputeStatus {
+  OPEN
+  UNDER_INVESTIGATION
+  RESOLVED_BUYER_REFUND
+  RESOLVED_SELLER_PAYOUT
+  CLOSED
+}
+
+// ---------------------------------------------------------
+// User Model (Buyers, Sellers, Admins)
+// ---------------------------------------------------------
+model User {
+  id              String        @id @default(cuid())
+  email           String?       @unique
+  phoneNumber     String        @unique // Myanmar format: 09xxxxxxxxx
+  name            String
+  avatarUrl       String?
+  role            Role          @default(BUYER)
+  isKycVerified   Boolean       @default(false)
+  kycDocType      String?       // NRC (National Registration Card) / Passport
+  kycDocNumber    String?
+  
+  // Payout Wallet Config
+  kpayNumber      String?
+  kpayName        String?
+  waveNumber      String?
+  waveName        String?
+  usdtAddress     String?
+  
+  // Reputation & Stats
+  rating          Float         @default(5.0)
+  totalSalesCount Int           @default(0)
+  totalBuyCount   Int           @default(0)
+  escrowVolumeMMK Decimal       @default(0) @db.Decimal(18, 2)
+  
+  createdAt       DateTime      @default(now())
+  updatedAt       DateTime      @updatedAt
+
+  // Relationships
+  listings        AccountListing[] @relation("SellerListings")
+  buyerOrders     Order[]          @relation("BuyerOrders")
+  sellerOrders    Order[]          @relation("SellerOrders")
+  reviewsGiven    Review[]         @relation("BuyerReviews")
+  reviewsReceived Review[]         @relation("SellerReviews")
+  payouts         SellerPayout[]
+  disputesFiled   DisputeCase[]    @relation("DisputeClaimant")
+
+  @@index([phoneNumber])
+  @@index([role])
+}
+
+// ---------------------------------------------------------
+// Game Category Definition
+// ---------------------------------------------------------
+model GameCategory {
+  id          String           @id @default(cuid())
+  gameType    GameType         @unique
+  nameEn      String
+  nameMm      String
+  iconUrl     String
+  bannerUrl   String?
+  isActive    Boolean          @default(true)
+  
+  listings    AccountListing[]
+
+  createdAt   DateTime         @default(now())
+  updatedAt   DateTime         @updatedAt
+}
+
+// ---------------------------------------------------------
+// Account Listing Model (with Dynamic JSON Attributes)
+// ---------------------------------------------------------
+model AccountListing {
+  id               String         @id @default(cuid())
+  sellerId         String
+  seller           User           @relation("SellerListings", fields: [sellerId], references: [id], onDelete: Cascade)
+  
+  categoryId       String
+  category         GameCategory   @relation(fields: [categoryId], references: [id])
+  gameType         GameType
+  
+  title            String
+  description      String         @db.Text
+  priceMMK         Decimal        @db.Decimal(18, 2) // e.g. 350,000 MMK
+  priceUSDT        Decimal        @db.Decimal(10, 2) // e.g. 75.00 USDT
+  status           ListingStatus  @default(AVAILABLE)
+  
+  // Dynamic JSON Attributes tailored per game
+  // eFootball: { division: 1, squadOvr: 104, epicCount: 14, konamiLinked: true, server: "Asia" }
+  // MLBB: { currentRank: "Mythical Immortal", peakRank: "120 Stars", winRate: 68.5, collectorSkins: 5, legendSkins: 2, moontonClean: true }
+  // PUBG: { level: 78, glacierM4Level: 7, mythicFashionCount: 35, rpSeasonCount: 12 }
+  // COC: { townHallLevel: 16, kingLevel: 95, queenLevel: 95, wardenLevel: 70, champLevel: 45, gems: 4200, nameChangeFree: true }
+  attributes       Json
+  
+  // Proof Media (Screenshots / Video URLs)
+  imageUrls        String[]
+  previewVideoUrl  String?
+  
+  // Credential Link Status
+  bindingStatus    String         // e.g. "Clean Konami ID / First-hand Mail", "Moonton all-unbindable"
+  instantDelivery  Boolean        @default(true)
+  viewCount        Int            @default(0)
+  
+  createdAt        DateTime       @default(now())
+  updatedAt        DateTime       @updatedAt
+
+  // Relationships
+  orders           Order[]
+  credentialVault  CredentialVault?
+  reviews          Review[]
+
+  @@index([gameType])
+  @@index([status])
+  @@index([priceMMK])
+}
+
+// ---------------------------------------------------------
+// Credential Vault (Encrypted Storage for Escrow Handoff)
+// ---------------------------------------------------------
+model CredentialVault {
+  id               String         @id @default(cuid())
+  listingId        String         @unique
+  listing          AccountListing @relation(fields: [listingId], references: [id], onDelete: Cascade)
+  
+  // AES-256 Encrypted Credential Payload
+  encryptedPayload String         @db.Text // Encrypted JSON containing loginId, password, emailAccess
+  loginIdentifier  String         // Masked preview (e.g. ko***@gmail.com)
+  authType         String         // "KONAMI_ID", "MOONTON", "SUPERCELL_ID", "TWITTER_LINK"
+  twoFactorCodes   String?        @db.Text
+  transferGuide    String?        @db.Text
+  
+  createdAt        DateTime       @default(now())
+  updatedAt        DateTime       @updatedAt
+}
+
+// ---------------------------------------------------------
+// Order & Escrow Transaction Model
+// ---------------------------------------------------------
+model Order {
+  id                  String         @id @default(cuid())
+  orderNumber         String         @unique // Format: GZ-2026-XXXXX
+  
+  buyerId             String
+  buyer               User           @relation("BuyerOrders", fields: [buyerId], references: [id])
+  
+  sellerId            String
+  seller              User           @relation("SellerOrders", fields: [sellerId], references: [id])
+  
+  listingId           String
+  listing             AccountListing @relation(fields: [listingId], references: [id])
+  
+  // Escrow Financials
+  amountMMK           Decimal        @db.Decimal(18, 2)
+  amountUSDT          Decimal        @db.Decimal(10, 2)
+  escrowFeeMMK        Decimal        @default(0) @db.Decimal(18, 2) // Promo 0%
+  
+  status              EscrowStatus   @default(PENDING_PAYMENT_PROOF)
+  paymentMethod       PaymentMethod
+  
+  // Myanmar Bank / Wallet Payment Proof
+  paymentSlipUrl      String?
+  transactionId       String?        // Bank / KPay / Wave Txn ID or last 6 digits
+  senderAccountNo     String?        // Buyer sender phone / account
+  adminVerifiedAt     DateTime?
+  adminVerifierId     String?
+  
+  // 24h Buyer Inspection Warranty
+  credentialsReleasedAt DateTime?
+  inspectionExpiresAt   DateTime?
+  completedAt           DateTime?
+  
+  createdAt           DateTime       @default(now())
+  updatedAt           DateTime       @updatedAt
+
+  // Relationships
+  dispute             DisputeCase?
+  sellerPayout        SellerPayout?
+
+  @@index([buyerId])
+  @@index([sellerId])
+  @@index([status])
+  @@index([orderNumber])
+}
+
+// ---------------------------------------------------------
+// Dispute Management
+// ---------------------------------------------------------
+model DisputeCase {
+  id             String         @id @default(cuid())
+  orderId        String         @unique
+  order          Order          @relation(fields: [orderId], references: [id], onDelete: Cascade)
+  
+  claimantId     String
+  claimant       User           @relation("DisputeClaimant", fields: [claimantId], references: [id])
+  
+  reason         String         // "WRONG_CREDENTIALS", "ACCOUNT_LOCKED", "RECOVERED_BY_ORIGINAL_OWNER", "ATTRIBUTES_MISMATCH"
+  description    String         @db.Text
+  evidenceUrls   String[]
+  
+  status         DisputeStatus  @default(OPEN)
+  adminDecision  String?        @db.Text
+  resolvedAt     DateTime?
+  
+  createdAt      DateTime       @default(now())
+  updatedAt      DateTime       @updatedAt
+}
+
+// ---------------------------------------------------------
+// Seller Payout (KPay, WavePay, USDT transfer)
+// ---------------------------------------------------------
+model SellerPayout {
+  id              String        @id @default(cuid())
+  sellerId        String
+  seller          User          @relation(fields: [sellerId], references: [id])
+  
+  orderId         String        @unique
+  order           Order         @relation(fields: [orderId], references: [id])
+  
+  amountMMK       Decimal       @db.Decimal(18, 2)
+  payoutMethod    PaymentMethod
+  targetWalletNo  String        // KPay phone, Wave phone, or USDT Address
+  targetName      String?
+  
+  status          PayoutStatus  @default(REQUESTED)
+  transferProofUrl String?
+  txRefNumber     String?
+  processedAt     DateTime?
+  
+  createdAt       DateTime      @default(now())
+  updatedAt       DateTime      @updatedAt
+
+  @@index([sellerId])
+  @@index([status])
+}
+
+// ---------------------------------------------------------
+// Ratings & Reviews
+// ---------------------------------------------------------
+model Review {
+  id          String         @id @default(cuid())
+  listingId   String
+  listing     AccountListing @relation(fields: [listingId], references: [id])
+  
+  buyerId     String
+  buyer       User           @relation("BuyerReviews", fields: [buyerId], references: [id])
+  
+  sellerId    String
+  seller      User           @relation("SellerReviews", fields: [sellerId], references: [id])
+  
+  rating      Int            // 1 to 5 stars
+  comment     String         @db.Text
+  
+  createdAt   DateTime       @default(now())
+  updatedAt   DateTime       @updatedAt
+
+  @@index([sellerId])
+  @@index([listingId])
+}

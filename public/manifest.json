@@ -1,0 +1,42 @@
+{
+  "name": "GameZay MM - Game Account Escrow Marketplace",
+  "short_name": "GameZay MM",
+  "description": "Myanmar's #1 Game Account Marketplace with 100% Escrow Protection for eFootball, MLBB, PUBG Mobile, and Clash of Clans.",
+  "start_url": "/",
+  "display": "standalone",
+  "background_color": "#020617",
+  "theme_color": "#06b6d4",
+  "orientation": "portrait-primary",
+  "icons": [
+    {
+      "src": "https://images.unsplash.com/photo-1542751371-adc38448a05e?w=192&auto=format&fit=crop&q=80",
+      "sizes": "192x192",
+      "type": "image/png",
+      "purpose": "any maskable"
+    },
+    {
+      "src": "https://images.unsplash.com/photo-1542751371-adc38448a05e?w=512&auto=format&fit=crop&q=80",
+      "sizes": "512x512",
+      "type": "image/png",
+      "purpose": "any maskable"
+    }
+  ],
+  "shortcuts": [
+    {
+      "name": "Marketplace",
+      "url": "/?tab=marketplace",
+      "description": "Browse Verified Game Accounts"
+    },
+    {
+      "name": "Escrow Orders",
+      "url": "/?tab=orders",
+      "description": "Track Active Escrow Orders"
+    },
+    {
+      "name": "Sell Account",
+      "url": "/?tab=sell",
+      "description": "List Game Account for Sale"
+    }
+  ],
+  "categories": ["games", "shopping", "finance"]
+}

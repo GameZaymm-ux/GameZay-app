@@ -1,0 +1,6 @@
+{
+  "name": "GameZay MM - Myanmar Game Account Escrow Marketplace",
+  "description": "Premier Myanmar Game Account Marketplace with Escrow Protection, Local Wallet (KPay, WavePay, AyaPay, CBPay, USDT) support, and dual-language (English & Myanmar).",
+  "requestFramePermissions": [],
+  "majorCapabilities": ["MAJOR_CAPABILITY_SERVER_SIDE_GEMINI_API"]
+}
