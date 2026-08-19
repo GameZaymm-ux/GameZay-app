@@ -17,6 +17,8 @@ import { SellAccountModal } from './components/SellAccountModal';
 import { AdminDashboard } from './components/AdminDashboard';
 import { SellerDashboard } from './components/SellerDashboard';
 import { PrismaSchemaViewer } from './components/PrismaSchemaViewer';
+import { HomePageView } from './components/HomePageView';
+import { NotificationsModal } from './components/NotificationsModal';
 import { UserProfileView } from './components/UserProfileView';
 import { SettingsModal } from './components/SettingsModal';
 import { KycVerificationModal } from './components/KycVerificationModal';
@@ -57,9 +59,10 @@ function MainApp() {
 
   // Navigation & Role State
   const [currentTab, setCurrentTab] = useState<
-    'marketplace' | 'orders' | 'sell' | 'admin' | 'seller' | 'schema' | 'profile'
-  >('marketplace');
+    'home' | 'marketplace' | 'orders' | 'sell' | 'admin' | 'seller' | 'schema' | 'profile'
+  >('home');
   const [userRole, setUserRole] = useState<UserRole>('BUYER');
+  const [isNotificationsOpen, setIsNotificationsOpen] = useState(false);
 
   // Listings & Filter State
   const [listings, setListings] = useState<AccountListing[]>(INITIAL_LISTINGS);
@@ -453,24 +456,35 @@ function MainApp() {
         setSearchQuery={setSearchQuery}
         openSellModal={() => setIsSellModalOpen(true)}
         onOpenSettings={() => setIsSettingsOpen(true)}
+        onOpenNotifications={() => setIsNotificationsOpen(true)}
+        unreadNotificationsCount={3}
         ordersCount={orders.filter((o) => o.status !== 'COMPLETED').length}
       />
 
       {/* Main Body Content */}
       <div className="flex-1 pb-24 md:pb-12">
-        {/* View 1: Marketplace / Home */}
-        {currentTab === 'marketplace' && (
-          <main className="space-y-6 sm:space-y-8">
-            {/* Hero Section */}
-            <HeroSection
-              onExploreAccounts={() => {
-                const el = document.getElementById('marketplace-listings');
-                el?.scrollIntoView({ behavior: 'smooth' });
-              }}
-              onSellAccount={() => setIsSellModalOpen(true)}
-            />
+        {/* View 1: Home Page */}
+        {currentTab === 'home' && (
+          <HomePageView
+            listings={listings}
+            onSelectGame={(game) => {
+              setSelectedGame(game);
+              setCurrentTab('marketplace');
+            }}
+            onNavigateToMarketplace={(game) => {
+              if (game) setSelectedGame(game);
+              setCurrentTab('marketplace');
+            }}
+            onOpenSellModal={() => setIsSellModalOpen(true)}
+            onInspectListing={(item) => setInspectListing(item)}
+            onBuyListing={(item) => setBuyListing(item)}
+          />
+        )}
 
-            {/* Game Category Pill Selection */}
+        {/* View 2: Marketplace Page */}
+        {currentTab === 'marketplace' && (
+          <main className="space-y-4 sm:space-y-6">
+            {/* Sticky Game Category Selection */}
             <GameCategoryTabs
               selectedGame={selectedGame}
               onSelectGame={setSelectedGame}
@@ -482,6 +496,39 @@ function MainApp() {
               id="marketplace-listings"
               className="w-full max-w-7xl mx-auto px-3.5 sm:px-6 lg:px-8 space-y-4"
             >
+              {/* Header Title & Active Status */}
+              <div className="flex items-center justify-between pb-1">
+                <div>
+                  <h1 className="text-base sm:text-xl font-black text-slate-900 dark:text-white flex items-center gap-2">
+                    <span>{isMM ? 'ဂိမ်းအကောင့် စျေးကွက်' : 'Verified Accounts Marketplace'}</span>
+                    <span className="text-xs px-2 py-0.5 rounded-full bg-cyan-500/10 text-cyan-600 dark:text-cyan-400 font-mono font-bold">
+                      {filteredListings.length}
+                    </span>
+                  </h1>
+                  <p className="text-xs text-slate-500 dark:text-slate-400 hidden sm:block">
+                    {isMM
+                      ? 'ဝယ်ယူသူ စိတ်ကြိုက်စစ်ဆေးနိုင်သော ၂၄ နာရီ Escrow အာမခံ အကောင့်များ'
+                      : 'Browse game accounts with 100% Escrow buyer protection and verified credentials.'}
+                  </p>
+                </div>
+
+                {/* Quick reset filters button if filtered */}
+                {(selectedGame !== 'all' || verifiedOnly || minPrice !== '' || maxPrice !== '' || searchQuery) && (
+                  <button
+                    onClick={() => {
+                      setSelectedGame('all');
+                      setVerifiedOnly(false);
+                      setMinPrice('');
+                      setMaxPrice('');
+                      setSearchQuery('');
+                    }}
+                    className="text-xs font-bold text-cyan-600 dark:text-cyan-400 hover:underline flex items-center gap-1 cursor-pointer bg-cyan-500/10 px-3 py-1.5 rounded-xl border border-cyan-500/20"
+                  >
+                    <RotateCcw className="w-3.5 h-3.5" />
+                    <span>{t('filters.clearAll')}</span>
+                  </button>
+                )}
+              </div>
               {/* Collapsible Mobile Top Filter Bar */}
               <div className="block md:hidden bg-white dark:bg-slate-900/90 border border-slate-200 dark:border-slate-800 rounded-2xl p-3 space-y-2.5 shadow-sm">
                 <div className="flex items-center justify-between gap-2">
@@ -712,7 +759,7 @@ function MainApp() {
                       </button>
                     </div>
                   ) : (
-                    <div className="grid grid-cols-1 sm:grid-cols-2 xl:grid-cols-3 gap-4 sm:gap-6 w-full">
+                    <div className="grid grid-cols-2 sm:grid-cols-2 md:grid-cols-3 lg:grid-cols-3 xl:grid-cols-3 2xl:grid-cols-4 gap-2.5 sm:gap-4 lg:gap-4.5 w-full">
                       {filteredListings.map((listing) => (
                         <ListingCard
                           key={listing.id}
@@ -802,13 +849,25 @@ function MainApp() {
       {/* Footer */}
       <Footer />
 
-      {/* Mobile Bottom Navigation Bar (5 Primary Touch Destinations) */}
+      {/* Mobile Bottom Navigation Bar (5 Primary Touch Destinations: Home, Market, Sell, Orders, Profile) */}
       <MobileBottomNav
         currentTab={currentTab}
         setCurrentTab={setCurrentTab}
         openSellModal={() => setIsSellModalOpen(true)}
-        onOpenMobileFilter={() => setIsFilterDrawerOpen(true)}
         activeOrdersCount={orders.filter((o) => o.status !== 'COMPLETED').length}
+        kycStatus={kycStatus}
+        userRole={userRole}
+        onOpenKycModal={() => setIsKycModalOpen(true)}
+      />
+
+      {/* Notifications Drawer / Modal */}
+      <NotificationsModal
+        isOpen={isNotificationsOpen}
+        onClose={() => setIsNotificationsOpen(false)}
+        onNavigateTab={(tab, orderId) => {
+          setCurrentTab(tab as any);
+          if (orderId) setSelectedOrderId(orderId);
+        }}
       />
 
       {/* Mobile Filter Bottom Sheet Drawer */}

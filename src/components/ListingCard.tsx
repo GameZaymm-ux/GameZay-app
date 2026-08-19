@@ -10,6 +10,8 @@ import {
   Sparkles,
   Lock,
   ArrowUpRight,
+  Shield,
+  Coins,
 } from 'lucide-react';
 
 interface ListingCardProps {
@@ -23,7 +25,7 @@ export const ListingCard: React.FC<ListingCardProps> = ({
   onInspect,
   onBuy,
 }) => {
-  const { t, formatMMK, formatTHB, formatPrice, formatDualPrice, currency, isMM } = useLanguage();
+  const { t, formatMMK, formatTHB, formatPrice, formatDualPrice, isMM } = useLanguage();
 
   const dualPrice = formatDualPrice(listing.priceMMK);
 
@@ -37,6 +39,10 @@ export const ListingCard: React.FC<ListingCardProps> = ({
         return { label: 'PUBG Mobile', color: 'bg-orange-600 text-white', icon: '🎯' };
       case 'coc':
         return { label: 'Clash of Clans', color: 'bg-yellow-600 text-white', icon: '🏰' };
+      case 'freefire':
+        return { label: 'Free Fire', color: 'bg-rose-600 text-white', icon: '🔥' };
+      case 'genshin':
+        return { label: 'Genshin', color: 'bg-purple-600 text-white', icon: '✨' };
       default:
         return { label: 'Game', color: 'bg-slate-700 text-white', icon: '🎮' };
     }
@@ -44,24 +50,24 @@ export const ListingCard: React.FC<ListingCardProps> = ({
 
   const badge = getGameBadge();
 
-  // Render game-specific feature tags
+  // Render game-specific feature tags (compact for 2-column mobile and multi-column desktop)
   const renderSpecPills = () => {
     if (listing.gameType === 'efootball') {
       const attrs = listing.attributes as EfootballAttributes;
       return (
-        <div className="flex flex-wrap gap-1.5 mt-2">
-          <span className="px-2 py-0.5 rounded-md bg-blue-50 dark:bg-blue-950/80 border border-blue-200 dark:border-blue-500/30 text-blue-700 dark:text-blue-300 text-[11px] font-bold">
+        <div className="flex flex-wrap gap-1 mt-1.5 sm:mt-2">
+          <span className="px-1.5 sm:px-2 py-0.5 rounded-md bg-blue-50 dark:bg-blue-950/80 border border-blue-200 dark:border-blue-500/30 text-blue-700 dark:text-blue-300 text-[10px] sm:text-[11px] font-bold">
             ⚡ {attrs.squadRating} OVR
           </span>
-          <span className="px-2 py-0.5 rounded-md bg-purple-50 dark:bg-purple-950/80 border border-purple-200 dark:border-purple-500/30 text-purple-700 dark:text-purple-300 text-[11px] font-bold">
+          <span className="px-1.5 sm:px-2 py-0.5 rounded-md bg-purple-50 dark:bg-purple-950/80 border border-purple-200 dark:border-purple-500/30 text-purple-700 dark:text-purple-300 text-[10px] sm:text-[11px] font-bold">
             🌟 {attrs.epicCount} Epics
           </span>
-          {attrs.coins !== undefined && (
-            <span className="px-2 py-0.5 rounded-md bg-amber-50 dark:bg-amber-950/80 border border-amber-200 dark:border-amber-500/30 text-amber-700 dark:text-amber-300 text-[11px] font-bold flex items-center gap-1">
-              🪙 {attrs.coins.toLocaleString()} Coins
+          {attrs.coins !== undefined && attrs.coins > 0 && (
+            <span className="px-1.5 sm:px-2 py-0.5 rounded-md bg-amber-50 dark:bg-amber-950/80 border border-amber-200 dark:border-amber-500/30 text-amber-700 dark:text-amber-300 text-[10px] sm:text-[11px] font-bold flex items-center gap-0.5">
+              🪙 {attrs.coins.toLocaleString()}
             </span>
           )}
-          <span className="px-2 py-0.5 rounded-md bg-slate-100 dark:bg-slate-800 text-slate-700 dark:text-slate-300 text-[11px]">
+          <span className="hidden sm:inline-block px-1.5 sm:px-2 py-0.5 rounded-md bg-slate-100 dark:bg-slate-800 text-slate-700 dark:text-slate-300 text-[10px] sm:text-[11px]">
             🏆 Div {attrs.division}
           </span>
         </div>
@@ -71,15 +77,15 @@ export const ListingCard: React.FC<ListingCardProps> = ({
     if (listing.gameType === 'mlbb') {
       const attrs = listing.attributes as MLBBAttributes;
       return (
-        <div className="flex flex-wrap gap-1.5 mt-2">
-          <span className="px-2 py-0.5 rounded-md bg-amber-50 dark:bg-amber-950/80 border border-amber-200 dark:border-amber-500/30 text-amber-700 dark:text-amber-300 text-[11px] font-bold">
+        <div className="flex flex-wrap gap-1 mt-1.5 sm:mt-2">
+          <span className="px-1.5 sm:px-2 py-0.5 rounded-md bg-amber-50 dark:bg-amber-950/80 border border-amber-200 dark:border-amber-500/30 text-amber-700 dark:text-amber-300 text-[10px] sm:text-[11px] font-bold truncate max-w-[120px]">
             👑 {attrs.currentRank}
           </span>
-          <span className="px-2 py-0.5 rounded-md bg-emerald-50 dark:bg-emerald-950/80 border border-emerald-200 dark:border-emerald-500/30 text-emerald-700 dark:text-emerald-300 text-[11px] font-bold">
+          <span className="px-1.5 sm:px-2 py-0.5 rounded-md bg-emerald-50 dark:bg-emerald-950/80 border border-emerald-200 dark:border-emerald-500/30 text-emerald-700 dark:text-emerald-300 text-[10px] sm:text-[11px] font-bold">
             🎯 {attrs.winRate}% WR
           </span>
-          <span className="px-2 py-0.5 rounded-md bg-purple-50 dark:bg-purple-950/80 border border-purple-200 dark:border-purple-500/30 text-purple-700 dark:text-purple-300 text-[11px]">
-            ✨ {attrs.collectorSkins} Collector
+          <span className="px-1.5 sm:px-2 py-0.5 rounded-md bg-purple-50 dark:bg-purple-950/80 border border-purple-200 dark:border-purple-500/30 text-purple-700 dark:text-purple-300 text-[10px] sm:text-[11px]">
+            ✨ {attrs.collectorSkins} Skins
           </span>
         </div>
       );
@@ -88,15 +94,15 @@ export const ListingCard: React.FC<ListingCardProps> = ({
     if (listing.gameType === 'pubg') {
       const attrs = listing.attributes as PUBGAttributes;
       return (
-        <div className="flex flex-wrap gap-1.5 mt-2">
-          <span className="px-2 py-0.5 rounded-md bg-cyan-50 dark:bg-cyan-950/80 border border-cyan-200 dark:border-cyan-500/30 text-cyan-700 dark:text-cyan-300 text-[11px] font-bold">
-            ❄️ {attrs.glacierLevel.split(' ')[0]} Max
+        <div className="flex flex-wrap gap-1 mt-1.5 sm:mt-2">
+          <span className="px-1.5 sm:px-2 py-0.5 rounded-md bg-cyan-50 dark:bg-cyan-950/80 border border-cyan-200 dark:border-cyan-500/30 text-cyan-700 dark:text-cyan-300 text-[10px] sm:text-[11px] font-bold truncate max-w-[120px]">
+            ❄️ {attrs.glacierLevel.split(' ')[0]}
           </span>
-          <span className="px-2 py-0.5 rounded-md bg-orange-50 dark:bg-orange-950/80 border border-orange-200 dark:border-orange-500/30 text-orange-700 dark:text-orange-300 text-[11px] font-bold">
+          <span className="px-1.5 sm:px-2 py-0.5 rounded-md bg-orange-50 dark:bg-orange-950/80 border border-orange-200 dark:border-orange-500/30 text-orange-700 dark:text-orange-300 text-[10px] sm:text-[11px] font-bold">
             🎖️ Lvl {attrs.level}
           </span>
-          <span className="px-2 py-0.5 rounded-md bg-rose-50 dark:bg-rose-950/80 border border-rose-200 dark:border-rose-500/30 text-rose-700 dark:text-rose-300 text-[11px]">
-            🦹 {attrs.mythicFashion} Mythics
+          <span className="px-1.5 sm:px-2 py-0.5 rounded-md bg-rose-50 dark:bg-rose-950/80 border border-rose-200 dark:border-rose-500/30 text-rose-700 dark:text-rose-300 text-[10px] sm:text-[11px]">
+            🦹 {attrs.mythicFashion} Myth
           </span>
         </div>
       );
@@ -105,15 +111,49 @@ export const ListingCard: React.FC<ListingCardProps> = ({
     if (listing.gameType === 'coc') {
       const attrs = listing.attributes as COCAttributes;
       return (
-        <div className="flex flex-wrap gap-1.5 mt-2">
-          <span className="px-2 py-0.5 rounded-md bg-yellow-50 dark:bg-yellow-950/80 border border-yellow-200 dark:border-yellow-500/30 text-yellow-800 dark:text-yellow-300 text-[11px] font-bold">
-            🏰 TH {attrs.townHall} Max
+        <div className="flex flex-wrap gap-1 mt-1.5 sm:mt-2">
+          <span className="px-1.5 sm:px-2 py-0.5 rounded-md bg-yellow-50 dark:bg-yellow-950/80 border border-yellow-200 dark:border-yellow-500/30 text-yellow-800 dark:text-yellow-300 text-[10px] sm:text-[11px] font-bold">
+            🏰 TH {attrs.townHall}
           </span>
-          <span className="px-2 py-0.5 rounded-md bg-indigo-50 dark:bg-indigo-950/80 border border-indigo-200 dark:border-indigo-500/30 text-indigo-700 dark:text-indigo-300 text-[11px] font-bold">
-            👑 K{attrs.kingLevel} / Q{attrs.queenLevel}
+          <span className="px-1.5 sm:px-2 py-0.5 rounded-md bg-indigo-50 dark:bg-indigo-950/80 border border-indigo-200 dark:border-indigo-500/30 text-indigo-700 dark:text-indigo-300 text-[10px] sm:text-[11px] font-bold">
+            👑 K{attrs.kingLevel}/Q{attrs.queenLevel}
           </span>
-          <span className="px-2 py-0.5 rounded-md bg-emerald-50 dark:bg-emerald-950/80 border border-emerald-200 dark:border-emerald-500/30 text-emerald-700 dark:text-emerald-300 text-[11px]">
-            💎 {attrs.gems} Gems
+          <span className="px-1.5 sm:px-2 py-0.5 rounded-md bg-emerald-50 dark:bg-emerald-950/80 border border-emerald-200 dark:border-emerald-500/30 text-emerald-700 dark:text-emerald-300 text-[10px] sm:text-[11px]">
+            💎 {attrs.gems.toLocaleString()}
+          </span>
+        </div>
+      );
+    }
+
+    if (listing.gameType === 'freefire') {
+      const attrs = listing.attributes as Record<string, any>;
+      return (
+        <div className="flex flex-wrap gap-1 mt-1.5 sm:mt-2">
+          <span className="px-1.5 sm:px-2 py-0.5 rounded-md bg-rose-50 dark:bg-rose-950/80 border border-rose-200 dark:border-rose-500/30 text-rose-700 dark:text-rose-300 text-[10px] sm:text-[11px] font-bold">
+            🔥 {attrs.rank || 'Master'}
+          </span>
+          <span className="px-1.5 sm:px-2 py-0.5 rounded-md bg-amber-50 dark:bg-amber-950/80 border border-amber-200 dark:border-amber-500/30 text-amber-700 dark:text-amber-300 text-[10px] sm:text-[11px] font-bold">
+            🎖️ Lvl {attrs.level || 78}
+          </span>
+          <span className="px-1.5 sm:px-2 py-0.5 rounded-md bg-purple-50 dark:bg-purple-950/80 border border-purple-200 dark:border-purple-500/30 text-purple-700 dark:text-purple-300 text-[10px] sm:text-[11px]">
+            ✨ {attrs.evoGunsMax || 4} Evo Max
+          </span>
+        </div>
+      );
+    }
+
+    if (listing.gameType === 'genshin') {
+      const attrs = listing.attributes as Record<string, any>;
+      return (
+        <div className="flex flex-wrap gap-1 mt-1.5 sm:mt-2">
+          <span className="px-1.5 sm:px-2 py-0.5 rounded-md bg-purple-50 dark:bg-purple-950/80 border border-purple-200 dark:border-purple-500/30 text-purple-700 dark:text-purple-300 text-[10px] sm:text-[11px] font-bold">
+            ✨ AR {attrs.adventureRank || 60}
+          </span>
+          <span className="px-1.5 sm:px-2 py-0.5 rounded-md bg-cyan-50 dark:bg-cyan-950/80 border border-cyan-200 dark:border-cyan-500/30 text-cyan-700 dark:text-cyan-300 text-[10px] sm:text-[11px] font-bold">
+            🌟 {attrs.fiveStarChars || 38} 5-Star
+          </span>
+          <span className="px-1.5 sm:px-2 py-0.5 rounded-md bg-amber-50 dark:bg-amber-950/80 border border-amber-200 dark:border-amber-500/30 text-amber-700 dark:text-amber-300 text-[10px] sm:text-[11px]">
+            💎 {attrs.primogems ? Number(attrs.primogems).toLocaleString() : '24k'}
           </span>
         </div>
       );
@@ -123,123 +163,139 @@ export const ListingCard: React.FC<ListingCardProps> = ({
   };
 
   return (
-    <div className="group relative w-full rounded-2xl bg-white dark:bg-slate-900/90 hover:bg-slate-50 dark:hover:bg-slate-900 border border-slate-200 dark:border-slate-800 hover:border-cyan-500/50 transition-all duration-300 shadow-md dark:shadow-xl hover:shadow-cyan-500/10 flex flex-col overflow-hidden">
-      {/* Image Banner Container */}
+    <div className="group relative w-full rounded-2xl bg-white dark:bg-slate-900/90 hover:bg-slate-50 dark:hover:bg-slate-900 border border-slate-200 dark:border-slate-800 hover:border-cyan-500/50 transition-all duration-300 shadow-sm hover:shadow-xl hover:shadow-cyan-500/10 flex flex-col overflow-hidden active:scale-[0.99]">
+      
+      {/* 1. Consistent Image Container (aspect-[4/3] ratio for all screen sizes) */}
       <div
         onClick={() => onInspect(listing)}
-        className="relative h-48 w-full overflow-hidden cursor-pointer bg-slate-950"
+        className="relative aspect-[4/3] w-full overflow-hidden cursor-pointer bg-slate-950 select-none"
       >
         <img
           src={listing.bannerUrl}
           alt={listing.title}
           className="w-full h-full object-cover group-hover:scale-105 transition-transform duration-500"
+          loading="lazy"
         />
 
-        {/* Dark gradient overlay */}
-        <div className="absolute inset-0 bg-gradient-to-t from-slate-950 via-slate-950/20 to-transparent" />
+        {/* Gradient Overlays */}
+        <div className="absolute inset-x-0 top-0 h-14 bg-gradient-to-b from-slate-950/80 via-slate-950/30 to-transparent pointer-events-none" />
+        <div className="absolute inset-x-0 bottom-0 h-16 bg-gradient-to-t from-slate-950/90 via-slate-950/40 to-transparent pointer-events-none" />
 
-        {/* Top Badges */}
-        <div className="absolute top-3 left-3 flex items-center gap-1.5">
-          <span className={`px-2.5 py-1 rounded-lg text-xs font-bold flex items-center gap-1 shadow-lg ${badge.color}`}>
+        {/* Top-Left: Game Category Badge */}
+        <div className="absolute top-2 sm:top-2.5 left-2 sm:left-2.5 flex items-center gap-1 z-10">
+          <span className={`px-2 py-0.5 sm:px-2.5 sm:py-1 rounded-lg text-[10px] sm:text-xs font-black flex items-center gap-1 shadow-lg ${badge.color}`}>
             <span>{badge.icon}</span>
             <span>{badge.label}</span>
           </span>
-
-          {listing.instantDelivery && (
-            <span className="px-2 py-1 rounded-lg bg-emerald-950/90 border border-emerald-500/40 text-emerald-300 text-[10px] font-bold flex items-center gap-1 backdrop-blur-md">
-              <Zap className="w-3 h-3 text-emerald-400" />
-              <span>{t('card.instantDelivery')}</span>
-            </span>
-          )}
         </div>
 
-        {/* Escrow Guarantee Pill */}
-        <div className="absolute top-3 right-3">
-          <span className="px-2.5 py-1 rounded-lg bg-slate-950/85 border border-cyan-500/40 text-cyan-300 text-[11px] font-bold flex items-center gap-1 backdrop-blur-md shadow-lg">
-            <ShieldCheck className="w-3.5 h-3.5 text-cyan-400" />
+        {/* Top-Right: 100% Escrow Shield Pill */}
+        <div className="absolute top-2 sm:top-2.5 right-2 sm:right-2.5 z-10">
+          <span className="px-1.5 sm:px-2 py-0.5 sm:py-1 rounded-lg bg-slate-950/85 border border-cyan-500/40 text-cyan-300 text-[9px] sm:text-[11px] font-bold flex items-center gap-1 backdrop-blur-md shadow-lg">
+            <ShieldCheck className="w-3 h-3 sm:w-3.5 sm:h-3.5 text-cyan-400" />
             <span>Escrow</span>
           </span>
         </div>
 
-        {/* View Count Badge */}
-        <div className="absolute bottom-2.5 right-3 flex items-center gap-1 text-[11px] text-slate-300 bg-slate-950/80 px-2 py-0.5 rounded-md backdrop-blur-sm">
-          <Eye className="w-3 h-3 text-slate-400" />
-          <span>{listing.views}</span>
+        {/* Bottom Badges: Instant Delivery & View Count */}
+        <div className="absolute bottom-2 inset-x-2 sm:inset-x-2.5 flex items-center justify-between z-10">
+          <div>
+            {listing.instantDelivery ? (
+              <span className="px-1.5 sm:px-2 py-0.5 rounded-md bg-emerald-950/85 border border-emerald-500/40 text-emerald-300 text-[9px] sm:text-[10px] font-bold flex items-center gap-0.5 sm:gap-1 backdrop-blur-md">
+                <Zap className="w-2.5 h-2.5 sm:w-3 sm:h-3 text-emerald-400 shrink-0" />
+                <span className="hidden xs:inline">{t('card.instantDelivery')}</span>
+                <span className="xs:hidden">Instant</span>
+              </span>
+            ) : (
+              <span />
+            )}
+          </div>
+
+          <div className="flex items-center gap-1 text-[10px] sm:text-[11px] text-slate-300 bg-slate-950/85 px-1.5 sm:px-2 py-0.5 rounded-md backdrop-blur-sm border border-white/10 font-mono">
+            <Eye className="w-3 h-3 text-slate-400 shrink-0" />
+            <span>{listing.views}</span>
+          </div>
         </div>
       </div>
 
-      {/* Card Body */}
-      <div className="p-4 flex-1 flex flex-col justify-between">
+      {/* 2. Card Content Body */}
+      <div className="p-2.5 sm:p-3.5 flex-1 flex flex-col justify-between space-y-2 sm:space-y-3">
         <div>
-          {/* Title */}
+          {/* Account Title (Clean 2-line clamp with uniform height) */}
           <h3
             onClick={() => onInspect(listing)}
-            className="text-sm font-bold text-slate-900 dark:text-white group-hover:text-cyan-600 dark:group-hover:text-cyan-300 transition line-clamp-2 cursor-pointer leading-snug"
+            className="text-xs sm:text-sm font-bold text-slate-900 dark:text-white group-hover:text-cyan-600 dark:group-hover:text-cyan-300 transition-colors line-clamp-2 cursor-pointer leading-tight sm:leading-snug min-h-[2rem] sm:min-h-[2.5rem]"
+            title={listing.title}
           >
             {listing.title}
           </h3>
 
-          {/* Dynamic spec tags */}
+          {/* Top Key Spec Highlights */}
           {renderSpecPills()}
 
-          {/* Binding status */}
-          <div className="mt-2.5 flex items-center gap-1 text-[11px] text-slate-500 dark:text-slate-400">
+          {/* Binding Security Status */}
+          <div className="mt-1.5 sm:mt-2 flex items-center gap-1 text-[10px] sm:text-[11px] text-slate-500 dark:text-slate-400">
             <Lock className="w-3 h-3 text-emerald-500 shrink-0" />
             <span className="truncate">{listing.bindingStatus}</span>
           </div>
         </div>
 
-        {/* Card Footer: Seller & Price & CTAs */}
-        <div className="mt-4 pt-3 border-t border-slate-100 dark:border-slate-800/80">
-          {/* Seller Row */}
-          <div className="flex items-center justify-between mb-3 text-xs">
-            <div className="flex items-center gap-2">
+        {/* 3. Card Footer: Seller Info & Dual Price & CTA */}
+        <div className="pt-2 sm:pt-2.5 border-t border-slate-100 dark:border-slate-800/80 space-y-2">
+          {/* Seller Line */}
+          <div className="flex items-center justify-between text-[10px] sm:text-xs">
+            <div className="flex items-center gap-1.5 min-w-0">
               <img
                 src={listing.seller.avatar}
                 alt={listing.seller.name}
-                className="w-5 h-5 rounded-full object-cover border border-slate-300 dark:border-slate-700"
+                className="w-4 h-4 sm:w-5 sm:h-5 rounded-full object-cover border border-slate-300 dark:border-slate-700 shrink-0"
               />
-              <span className="text-slate-700 dark:text-slate-300 font-medium truncate max-w-[120px]">
+              <span className="text-slate-700 dark:text-slate-300 font-medium truncate max-w-[85px] sm:max-w-[120px]">
                 {listing.seller.name}
               </span>
               {listing.isVerifiedSeller && (
-                <CheckCircle className="w-3.5 h-3.5 text-cyan-500 shrink-0" title={t('card.verifiedSeller')} />
+                <CheckCircle className="w-3 h-3 text-cyan-500 shrink-0" title={t('card.verifiedSeller')} />
               )}
             </div>
 
-            <div className="flex items-center gap-1 text-amber-500 font-bold text-[11px]">
+            <div className="flex items-center gap-0.5 sm:gap-1 text-amber-500 font-bold text-[10px] sm:text-[11px] shrink-0 font-mono">
               <Star className="w-3 h-3 fill-amber-400" />
               <span>{listing.seller.rating.toFixed(1)}</span>
-              <span className="text-slate-400 font-normal">({listing.seller.tradesCompleted})</span>
             </div>
           </div>
 
-          {/* Price & Action Row */}
-          <div className="flex items-end justify-between gap-2">
-            <div>
-              <div className="text-base sm:text-lg font-black text-slate-900 dark:text-white leading-none font-mono">
+          {/* Price & Action Buttons */}
+          <div className="flex items-end justify-between gap-1.5 pt-0.5">
+            {/* Dual Currency Price */}
+            <div className="min-w-0">
+              <div className="text-xs sm:text-base font-black text-slate-900 dark:text-white font-mono leading-none truncate">
                 {dualPrice.primary}
               </div>
-              <div className="text-[11px] text-cyan-600 dark:text-cyan-400 font-medium mt-0.5 font-mono">
+              <div className="text-[9px] sm:text-[11px] text-cyan-600 dark:text-cyan-400 font-mono font-medium mt-0.5 truncate">
                 {dualPrice.secondary}
               </div>
             </div>
 
-            <div className="flex items-center gap-1.5">
+            {/* Quick Actions (Inspect & Buy) */}
+            <div className="flex items-center gap-1 shrink-0">
               <button
+                type="button"
                 onClick={() => onInspect(listing)}
-                className="px-2.5 py-2 rounded-xl bg-slate-100 dark:bg-slate-800 hover:bg-slate-200 dark:hover:bg-slate-700 text-slate-700 dark:text-slate-200 text-xs font-semibold transition cursor-pointer"
+                className="p-1.5 sm:px-2 sm:py-1.5 rounded-xl bg-slate-100 dark:bg-slate-800 hover:bg-slate-200 dark:hover:bg-slate-700 text-slate-700 dark:text-slate-200 transition cursor-pointer active:scale-90"
                 title={t('card.viewDetails')}
+                aria-label="Inspect Account"
               >
-                <ArrowUpRight className="w-4 h-4" />
+                <ArrowUpRight className="w-3.5 h-3.5 sm:w-4 sm:h-4" />
               </button>
 
               <button
+                type="button"
                 onClick={() => onBuy(listing)}
-                className="px-3.5 py-2 rounded-xl bg-gradient-to-r from-cyan-500 to-emerald-500 hover:from-cyan-400 hover:to-emerald-400 text-slate-950 text-xs font-black shadow-md shadow-cyan-500/20 transition active:scale-95 flex items-center gap-1 cursor-pointer"
+                className="px-2.5 sm:px-3 py-1.5 rounded-xl bg-gradient-to-r from-cyan-500 via-teal-500 to-emerald-500 hover:from-cyan-400 hover:to-emerald-400 text-slate-950 text-[11px] sm:text-xs font-black shadow-md shadow-cyan-500/20 transition active:scale-95 flex items-center gap-1 cursor-pointer"
               >
-                <ShieldCheck className="w-3.5 h-3.5" />
-                <span>{t('card.buyNow')}</span>
+                <ShieldCheck className="w-3 h-3 sm:w-3.5 sm:h-3.5 shrink-0" />
+                <span className="hidden sm:inline">{t('card.buyNow')}</span>
+                <span className="sm:hidden">Buy</span>
               </button>
             </div>
           </div>
