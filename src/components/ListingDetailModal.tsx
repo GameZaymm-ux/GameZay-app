@@ -47,6 +47,9 @@ import {
   Image as ImageIcon,
   FileText,
   Table,
+  Coins,
+  Wallet,
+  CircleDollarSign,
 } from 'lucide-react';
 
 interface ListingDetailModalProps {
@@ -123,9 +126,9 @@ export const ListingDetailModal: React.FC<ListingDetailModalProps> = ({
             { title: 'Main Squad & Manager Synergy', category: 'Squad 104+ OVR' },
             { title: 'Epics & Big Time Showcase', category: '18 Epics' },
             { title: 'Division 1 Match Record', category: 'Rank Proof' },
+            { title: 'Coins & GP Balance Vault', category: 'Coins & GP' },
             { title: 'Konami ID First-Hand Bind', category: 'Security' },
             { title: 'Substitutes & Reserve Bench', category: 'Bench' },
-            { title: 'Trainer Points & Contracts', category: 'Items' },
           ];
         case 'mlbb':
           return [
@@ -354,7 +357,10 @@ export const ListingDetailModal: React.FC<ListingDetailModalProps> = ({
           { label: 'Current Division', value: `Division ${attr.division}` },
           { label: 'Team Squad Rating', value: `${attr.squadRating} OVR` },
           { label: 'Epic Booster Count', value: `${attr.epicCount} Epics` },
-          { label: 'Platform Server', value: 'Mobile (Android/iOS)' },
+          { label: 'Showtime / Big Time', value: `${attr.showtimeCount || 0} Special Cards` },
+          { label: 'eFootball Coins Balance', value: `${(attr.coins ?? 1500).toLocaleString()} Coins 🪙` },
+          { label: 'GP Currency Balance', value: `${(attr.gp ?? 2500000).toLocaleString()} GP 💰` },
+          { label: 'Platform Server', value: attr.platform || 'Mobile (Android/iOS)' },
           { label: 'Konami ID Link', value: 'First-Hand (Changeable)' },
           { label: 'Handover Method', value: 'Direct Konami Credentials' },
         ];
@@ -678,32 +684,59 @@ export const ListingDetailModal: React.FC<ListingDetailModalProps> = ({
                     </div>
                   </div>
 
-                  {/* Key Stats Grid (3 Compact Visual Cards) */}
+                  {/* Key Stats Grid */}
                   <div className="space-y-2">
                     <h3 className="text-xs font-bold text-slate-700 dark:text-slate-300 uppercase tracking-wider flex items-center gap-1.5">
                       <Gamepad2 className="w-4 h-4 text-cyan-500" />
-                      <span>{isMM ? 'အဓိက ဂိမ်းအချက်အလက်များ' : 'Key Highlights'}</span>
+                      <span>{isMM ? 'အဓိက ဂိမ်းအချက်အလက်များ' : 'Key Highlights & Assets'}</span>
                     </h3>
 
-                    {/* eFootball 3 Key Cards */}
+                    {/* eFootball 5 Key Highlight Cards with Coins & GP Balance */}
                     {listing.gameType === 'efootball' && (
-                      <div className="grid grid-cols-3 gap-2">
+                      <div className="grid grid-cols-2 sm:grid-cols-3 gap-2">
+                        {/* Division */}
                         <div className="p-2.5 rounded-2xl bg-white dark:bg-slate-950 border border-slate-200 dark:border-slate-800 text-center shadow-sm">
-                          <div className="text-[10px] text-slate-500 dark:text-slate-400">{t('attributes.efootball.division')}</div>
+                          <div className="text-[10px] text-slate-500 dark:text-slate-400 font-medium">{t('attributes.efootball.division')}</div>
                           <div className="text-xs sm:text-sm font-bold text-cyan-600 dark:text-cyan-400 font-mono mt-0.5">
                             Div {(listing.attributes as EfootballAttributes).division}
                           </div>
                         </div>
+
+                        {/* Squad Rating */}
                         <div className="p-2.5 rounded-2xl bg-white dark:bg-slate-950 border border-slate-200 dark:border-slate-800 text-center shadow-sm">
-                          <div className="text-[10px] text-slate-500 dark:text-slate-400">{t('attributes.efootball.squadRating')}</div>
+                          <div className="text-[10px] text-slate-500 dark:text-slate-400 font-medium">{t('attributes.efootball.squadRating')}</div>
                           <div className="text-xs sm:text-sm font-bold text-emerald-600 dark:text-emerald-400 font-mono mt-0.5">
                             {(listing.attributes as EfootballAttributes).squadRating} OVR
                           </div>
                         </div>
+
+                        {/* Epics Count */}
                         <div className="p-2.5 rounded-2xl bg-white dark:bg-slate-950 border border-slate-200 dark:border-slate-800 text-center shadow-sm">
-                          <div className="text-[10px] text-slate-500 dark:text-slate-400">{t('attributes.efootball.epicCount')}</div>
-                          <div className="text-xs sm:text-sm font-bold text-amber-600 dark:text-amber-400 font-mono mt-0.5">
+                          <div className="text-[10px] text-slate-500 dark:text-slate-400 font-medium">{t('attributes.efootball.epicCount')}</div>
+                          <div className="text-xs sm:text-sm font-bold text-purple-600 dark:text-purple-400 font-mono mt-0.5">
                             {(listing.attributes as EfootballAttributes).epicCount} Epics
+                          </div>
+                        </div>
+
+                        {/* eFootball Coins (Gold Badge) */}
+                        <div className="p-2.5 rounded-2xl bg-gradient-to-br from-amber-500/10 via-amber-500/5 to-transparent bg-white dark:bg-slate-950 border border-amber-500/30 text-center shadow-sm">
+                          <div className="text-[10px] text-amber-600 dark:text-amber-400 font-bold flex items-center justify-center gap-1">
+                            <Coins className="w-3.5 h-3.5 text-amber-500" />
+                            <span>Coins</span>
+                          </div>
+                          <div className="text-xs sm:text-sm font-black text-amber-600 dark:text-amber-400 font-mono mt-0.5">
+                            {((listing.attributes as EfootballAttributes).coins ?? 1500).toLocaleString()}
+                          </div>
+                        </div>
+
+                        {/* GP Balance (Blue / Cyan Badge) */}
+                        <div className="col-span-2 sm:col-span-2 md:col-span-1 p-2.5 rounded-2xl bg-gradient-to-br from-blue-500/10 via-cyan-500/5 to-transparent bg-white dark:bg-slate-950 border border-blue-500/30 text-center shadow-sm">
+                          <div className="text-[10px] text-blue-600 dark:text-blue-400 font-bold flex items-center justify-center gap-1">
+                            <Wallet className="w-3.5 h-3.5 text-blue-500" />
+                            <span>GP Balance</span>
+                          </div>
+                          <div className="text-xs sm:text-sm font-black text-blue-600 dark:text-blue-400 font-mono mt-0.5 truncate">
+                            {((listing.attributes as EfootballAttributes).gp ?? 2500000).toLocaleString()} GP
                           </div>
                         </div>
                       </div>
@@ -744,7 +777,7 @@ export const ListingDetailModal: React.FC<ListingDetailModalProps> = ({
                         </div>
                         <div className="p-2.5 rounded-2xl bg-white dark:bg-slate-950 border border-slate-200 dark:border-slate-800 text-center shadow-sm">
                           <div className="text-[10px] text-slate-500 dark:text-slate-400">{t('attributes.pubg.glacierWeapon')}</div>
-                          <div className="text-xs sm:text-sm font-bold text-emerald-600 dark:text-emerald-400 font-mono mt-0.5 truncate">
+                          <div className="text-xs font-bold text-emerald-600 dark:text-emerald-400 font-mono mt-0.5 truncate">
                             {(listing.attributes as PUBGAttributes).glacierLevel}
                           </div>
                         </div>
@@ -908,10 +941,11 @@ export const ListingDetailModal: React.FC<ListingDetailModalProps> = ({
               {/* ========================================================= */}
               {/* --- 1. DESKTOP ONLY: Header Title & Price Card with Buy Action --- */}
               {/* ========================================================= */}
-              <div className="hidden lg:block p-5 rounded-3xl bg-white dark:bg-slate-950 border border-slate-200 dark:border-slate-800 shadow-sm space-y-3">
+              <div className="hidden lg:block p-5 rounded-3xl bg-white dark:bg-slate-950 border border-slate-200 dark:border-slate-800 shadow-sm space-y-4">
                 <div className="flex items-center justify-between gap-2">
-                  <span className="px-2.5 py-1 rounded-lg text-xs font-black uppercase tracking-wider bg-cyan-500/10 text-cyan-600 dark:text-cyan-400 border border-cyan-500/20">
-                    {listing.gameType}
+                  <span className="px-2.5 py-1 rounded-lg text-xs font-black uppercase tracking-wider bg-cyan-500/10 text-cyan-600 dark:text-cyan-400 border border-cyan-500/20 flex items-center gap-1">
+                    <Gamepad2 className="w-3.5 h-3.5" />
+                    <span>{listing.gameType}</span>
                   </span>
                   <span className="text-xs text-slate-500 dark:text-slate-400 flex items-center gap-1">
                     <Eye className="w-3.5 h-3.5 text-cyan-500" />
@@ -943,8 +977,58 @@ export const ListingDetailModal: React.FC<ListingDetailModalProps> = ({
                   </div>
                 </div>
 
+                {/* Desktop Key Highlights Grid */}
+                {listing.gameType === 'efootball' && (
+                  <div className="p-3.5 rounded-2xl bg-slate-50 dark:bg-slate-900/60 border border-slate-200 dark:border-slate-800/80 space-y-2">
+                    <div className="text-[11px] font-bold text-slate-700 dark:text-slate-300 uppercase tracking-wider flex items-center gap-1">
+                      <Gamepad2 className="w-3.5 h-3.5 text-cyan-500" />
+                      <span>{isMM ? 'ဂိမ်းအဓိက ပိုင်ဆိုင်မှုများ' : 'Key Account Specs'}</span>
+                    </div>
+                    <div className="grid grid-cols-3 gap-2">
+                      <div className="p-2 rounded-xl bg-white dark:bg-slate-950 border border-slate-200 dark:border-slate-800 text-center">
+                        <div className="text-[9px] text-slate-400">Division</div>
+                        <div className="text-xs font-bold text-cyan-500 font-mono">
+                          Div {(listing.attributes as EfootballAttributes).division}
+                        </div>
+                      </div>
+                      <div className="p-2 rounded-xl bg-white dark:bg-slate-950 border border-slate-200 dark:border-slate-800 text-center">
+                        <div className="text-[9px] text-slate-400">Squad Rating</div>
+                        <div className="text-xs font-bold text-emerald-500 font-mono">
+                          {(listing.attributes as EfootballAttributes).squadRating} OVR
+                        </div>
+                      </div>
+                      <div className="p-2 rounded-xl bg-white dark:bg-slate-950 border border-slate-200 dark:border-slate-800 text-center">
+                        <div className="text-[9px] text-slate-400">Epics Count</div>
+                        <div className="text-xs font-bold text-purple-400 font-mono">
+                          {(listing.attributes as EfootballAttributes).epicCount} Epics
+                        </div>
+                      </div>
+                    </div>
+                    <div className="grid grid-cols-2 gap-2 pt-0.5">
+                      <div className="p-2 rounded-xl bg-amber-500/10 border border-amber-500/30 text-center">
+                        <div className="text-[9px] text-amber-600 dark:text-amber-400 font-bold flex items-center justify-center gap-1">
+                          <Coins className="w-3 h-3 text-amber-500" />
+                          <span>Coins</span>
+                        </div>
+                        <div className="text-xs font-black text-amber-600 dark:text-amber-400 font-mono">
+                          {((listing.attributes as EfootballAttributes).coins ?? 1500).toLocaleString()}
+                        </div>
+                      </div>
+                      <div className="p-2 rounded-xl bg-blue-500/10 border border-blue-500/30 text-center">
+                        <div className="text-[9px] text-blue-600 dark:text-blue-400 font-bold flex items-center justify-center gap-1">
+                          <Wallet className="w-3 h-3 text-blue-500" />
+                          <span>GP</span>
+                        </div>
+                        <div className="text-xs font-black text-blue-600 dark:text-blue-400 font-mono truncate">
+                          {((listing.attributes as EfootballAttributes).gp ?? 2500000).toLocaleString()}
+                        </div>
+                      </div>
+                    </div>
+                  </div>
+                )}
+
                 {/* Desktop Buy Button */}
-                <div className="pt-2 flex flex-col gap-2.5">
+                <div className="pt-1 flex flex-col gap-2.5">
                   <button
                     type="button"
                     onClick={() => onProceedToBuy(listing)}

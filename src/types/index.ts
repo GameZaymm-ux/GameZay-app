@@ -85,11 +85,13 @@ export interface DisputeInfo {
 
 export interface EfootballAttributes {
   division: number; // e.g. 1
-  squadRating: number; // e.g. 104
+  squadRating: number; // e.g. 104 or 3150
   epicCount: number; // e.g. 18
   showtimeCount: number; // e.g. 6
+  coins?: number; // e.g. 1500 Coins
+  gp?: number; // e.g. 2500000 GP
   konamiStatus: string; // "Clean First Hand" | "Linked / Transfer Available"
-  platform: 'Android' | 'iOS' | 'PC / Console';
+  platform: 'Android' | 'iOS' | 'PC / Console' | 'Android / iOS';
   highlightPlayers: string[]; // ["Big Time Messi", "Blitz Curler Salah", "Show Time Mbappe"]
 }
 

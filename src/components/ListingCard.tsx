@@ -56,6 +56,11 @@ export const ListingCard: React.FC<ListingCardProps> = ({
           <span className="px-2 py-0.5 rounded-md bg-purple-50 dark:bg-purple-950/80 border border-purple-200 dark:border-purple-500/30 text-purple-700 dark:text-purple-300 text-[11px] font-bold">
             🌟 {attrs.epicCount} Epics
           </span>
+          {attrs.coins !== undefined && (
+            <span className="px-2 py-0.5 rounded-md bg-amber-50 dark:bg-amber-950/80 border border-amber-200 dark:border-amber-500/30 text-amber-700 dark:text-amber-300 text-[11px] font-bold flex items-center gap-1">
+              🪙 {attrs.coins.toLocaleString()} Coins
+            </span>
+          )}
           <span className="px-2 py-0.5 rounded-md bg-slate-100 dark:bg-slate-800 text-slate-700 dark:text-slate-300 text-[11px]">
             🏆 Div {attrs.division}
           </span>

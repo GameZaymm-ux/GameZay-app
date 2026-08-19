@@ -37,6 +37,8 @@ export const SellAccountModal: React.FC<SellAccountModalProps> = ({
   const [squadRating, setSquadRating] = useState(104);
   const [epicCount, setEpicCount] = useState(14);
   const [division, setDivision] = useState(1);
+  const [coinsCount, setCoinsCount] = useState(1200);
+  const [gpAmount, setGpAmount] = useState(1500000);
 
   // MLBB specs
   const [mlbbRank, setMlbbRank] = useState('Mythical Immortal');
@@ -79,6 +81,8 @@ export const SellAccountModal: React.FC<SellAccountModalProps> = ({
         squadRating,
         epicCount,
         showtimeCount: 4,
+        coins: coinsCount,
+        gp: gpAmount,
         konamiStatus: bindingStatus,
         platform: 'Android / iOS',
         highlightPlayers: ['Epic Booster Cards', 'Show Time Players'],
@@ -270,7 +274,7 @@ export const SellAccountModal: React.FC<SellAccountModalProps> = ({
             </h4>
 
             {gameType === 'efootball' && (
-              <div className="grid grid-cols-1 sm:grid-cols-3 gap-4 text-xs">
+              <div className="grid grid-cols-1 sm:grid-cols-3 md:grid-cols-5 gap-3 text-xs">
                 <div>
                   <label className="text-slate-300 block mb-1">Squad Rating (OVR)</label>
                   <input
@@ -281,7 +285,7 @@ export const SellAccountModal: React.FC<SellAccountModalProps> = ({
                   />
                 </div>
                 <div>
-                  <label className="text-slate-300 block mb-1">Epic / Big Time Count</label>
+                  <label className="text-slate-300 block mb-1">Epic / Big Time</label>
                   <input
                     type="number"
                     value={epicCount}
@@ -290,12 +294,30 @@ export const SellAccountModal: React.FC<SellAccountModalProps> = ({
                   />
                 </div>
                 <div>
-                  <label className="text-slate-300 block mb-1">Division Rank</label>
+                  <label className="text-slate-300 block mb-1">Division</label>
                   <input
                     type="number"
                     value={division}
                     onChange={(e) => setDivision(Number(e.target.value))}
                     className="w-full px-3 py-2 bg-slate-900 border border-slate-700 rounded-xl text-white"
+                  />
+                </div>
+                <div>
+                  <label className="text-amber-400 block mb-1 font-semibold">Coins 🪙</label>
+                  <input
+                    type="number"
+                    value={coinsCount}
+                    onChange={(e) => setCoinsCount(Number(e.target.value))}
+                    className="w-full px-3 py-2 bg-slate-900 border border-amber-500/50 rounded-xl text-amber-300 font-bold"
+                  />
+                </div>
+                <div>
+                  <label className="text-cyan-400 block mb-1 font-semibold">GP Balance 💰</label>
+                  <input
+                    type="number"
+                    value={gpAmount}
+                    onChange={(e) => setGpAmount(Number(e.target.value))}
+                    className="w-full px-3 py-2 bg-slate-900 border border-cyan-500/50 rounded-xl text-cyan-300 font-bold"
                   />
                 </div>
               </div>
