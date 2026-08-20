@@ -324,91 +324,196 @@ export const SellerDashboard: React.FC<SellerDashboardProps> = ({
   }, [orders, selectedSellerOrderId]);
 
   return (
-    <div className="max-w-7xl mx-auto px-3 sm:px-6 lg:px-8 py-6 space-y-6 pb-24 md:pb-12">
-      {/* Top Header with Mode Switcher & Seller Badge */}
-      <div className="flex flex-col md:flex-row md:items-center justify-between gap-4 bg-gradient-to-r from-slate-900 via-slate-900 to-emerald-950/80 rounded-3xl p-5 sm:p-6 border border-slate-800 text-white shadow-xl">
-        <div className="space-y-1.5">
-          <div className="flex items-center gap-2.5 flex-wrap">
-            <span className="inline-flex items-center gap-1 px-3 py-1 rounded-full bg-emerald-500/20 text-emerald-400 border border-emerald-500/30 text-xs font-black tracking-wide">
-              <Sparkles className="w-3.5 h-3.5" />
-              <span>{t('sellerStudio.sellerBadge')}</span>
-            </span>
-            <span className="inline-flex items-center gap-1 px-2.5 py-1 rounded-full bg-slate-800 text-slate-300 text-xs font-mono">
-              <ShieldCheck className="w-3.5 h-3.5 text-emerald-400" />
-              <span>KYC: {kycStatus}</span>
-            </span>
+    <div className="max-w-7xl mx-auto px-3 sm:px-6 lg:px-8 py-4 sm:py-6 space-y-5 pb-24 md:pb-12">
+      {/* ------------------------------------------------------------ */}
+      {/* 1. OVERVIEW TAB: Condensed Hero Banner + Tabs                */}
+      {/* ------------------------------------------------------------ */}
+      {activeTab === 'overview' ? (
+        <div className="space-y-4">
+          {/* Condensed Overview Hero Banner */}
+          <div className="flex flex-col md:flex-row md:items-center justify-between gap-4 bg-gradient-to-r from-slate-900 via-slate-900 to-emerald-950/80 rounded-2xl sm:rounded-3xl p-4 sm:p-5 border border-slate-800 text-white shadow-lg">
+            <div className="space-y-1">
+              <div className="flex items-center gap-2 flex-wrap">
+                <span className="inline-flex items-center gap-1 px-2.5 py-0.5 rounded-full bg-emerald-500/20 text-emerald-400 border border-emerald-500/30 text-[11px] font-black tracking-wide">
+                  <Sparkles className="w-3 h-3" />
+                  <span>{t('sellerStudio.sellerBadge')}</span>
+                </span>
+                <span className="inline-flex items-center gap-1 px-2 py-0.5 rounded-full bg-slate-800 text-slate-300 text-[11px] font-mono">
+                  <ShieldCheck className="w-3 h-3 text-emerald-400" />
+                  <span>KYC: {kycStatus}</span>
+                </span>
+              </div>
+
+              <h1 className="text-lg sm:text-xl font-black tracking-tight text-white flex items-center gap-2">
+                <span>{t('sellerStudio.title')}</span>
+              </h1>
+              <p className="text-xs text-slate-300 max-w-xl leading-relaxed">
+                {t('sellerStudio.subtitle')}
+              </p>
+            </div>
+
+            {/* Action Buttons: Switch to Buyer & + Sell */}
+            <div className="flex items-center gap-2 self-start md:self-center flex-wrap">
+              {onSwitchToBuyerMode && (
+                <button
+                  type="button"
+                  onClick={onSwitchToBuyerMode}
+                  className="px-3.5 py-2 rounded-xl bg-slate-800/90 hover:bg-slate-700 text-slate-200 border border-slate-700 hover:border-slate-600 text-xs font-bold transition flex items-center gap-1.5 cursor-pointer shadow-sm active:scale-95"
+                >
+                  <ShoppingBag className="w-3.5 h-3.5 text-emerald-400" />
+                  <span>{t('sellerStudio.switchToBuyer')}</span>
+                </button>
+              )}
+
+              <button
+                type="button"
+                onClick={onOpenSellModal}
+                className="px-3.5 py-2 rounded-xl bg-gradient-to-r from-emerald-500 to-teal-500 hover:from-emerald-400 hover:to-teal-400 text-slate-950 text-xs font-black shadow-md shadow-emerald-500/20 transition active:scale-95 flex items-center gap-1.5 cursor-pointer"
+              >
+                <PlusCircle className="w-3.5 h-3.5" />
+                <span>{t('sellerStudio.listings.postNew')}</span>
+              </button>
+            </div>
           </div>
 
-          <h1 className="text-xl sm:text-2xl font-black tracking-tight text-white flex items-center gap-2">
-            <span>{t('sellerStudio.title')}</span>
-          </h1>
-          <p className="text-xs sm:text-sm text-slate-300 max-w-2xl leading-relaxed">
-            {t('sellerStudio.subtitle')}
-          </p>
-        </div>
-
-        {/* Action Buttons: Switch to Buyer & + Sell */}
-        <div className="flex items-center gap-2.5 self-start md:self-center flex-wrap">
-          {onSwitchToBuyerMode && (
-            <button
-              onClick={onSwitchToBuyerMode}
-              className="px-4 py-2.5 rounded-2xl bg-slate-800/90 hover:bg-slate-700 text-slate-200 border border-slate-700 hover:border-slate-600 text-xs font-bold transition flex items-center gap-1.5 cursor-pointer shadow-sm active:scale-95"
-            >
-              <ShoppingBag className="w-4 h-4 text-emerald-400" />
-              <span>{t('sellerStudio.switchToBuyer')}</span>
-            </button>
-          )}
-
-          <button
-            onClick={onOpenSellModal}
-            className="px-4 py-2.5 rounded-2xl bg-gradient-to-r from-emerald-500 to-teal-500 hover:from-emerald-400 hover:to-teal-400 text-slate-950 text-xs font-black shadow-lg shadow-emerald-500/25 transition active:scale-95 flex items-center gap-1.5 cursor-pointer"
-          >
-            <PlusCircle className="w-4 h-4" />
-            <span>{t('sellerStudio.listings.postNew')}</span>
-          </button>
-        </div>
-      </div>
-
-      {/* Desktop Horizontal 5-Tab Navigation Bar */}
-      <div className="hidden sm:flex items-center gap-2 bg-white dark:bg-slate-900 p-2 rounded-2xl border border-slate-200 dark:border-slate-800 shadow-sm">
-        {[
-          { id: 'overview' as const, label: t('sellerStudio.nav.overview'), icon: LayoutDashboard },
-          { id: 'listings' as const, label: t('sellerStudio.nav.listings'), icon: Package, badge: listings.length },
-          { id: 'sales' as const, label: t('sellerStudio.nav.sales'), icon: ReceiptText, badge: ongoingSalesCount },
-          { id: 'wallet' as const, label: t('sellerStudio.nav.wallet'), icon: Wallet },
-        ].map((tabItem) => {
-          const Icon = tabItem.icon;
-          const isActive = activeTab === tabItem.id;
-          return (
-            <button
-              key={tabItem.id}
-              onClick={() => {
-                if (tabItem.id === 'sales' && selectedSellerOrderId) {
-                  // Keep or clear selected order as appropriate
-                }
-                setTab(tabItem.id);
-              }}
-              className={`flex-1 flex items-center justify-center gap-2 py-2.5 px-4 rounded-xl text-xs sm:text-sm font-bold transition cursor-pointer ${
-                isActive
-                  ? 'bg-emerald-500 text-slate-950 shadow-md font-black shadow-emerald-500/20'
-                  : 'text-slate-600 dark:text-slate-400 hover:text-slate-900 dark:hover:text-white hover:bg-slate-100 dark:hover:bg-slate-800/60'
-              }`}
-            >
-              <Icon className="w-4 h-4" />
-              <span>{tabItem.label}</span>
-              {tabItem.badge !== undefined && tabItem.badge > 0 && (
-                <span
-                  className={`px-2 py-0.2 rounded-full text-[10px] font-mono font-bold ${
-                    isActive ? 'bg-slate-950 text-white' : 'bg-slate-200 dark:bg-slate-800 text-slate-700 dark:text-slate-300'
+          {/* Desktop Horizontal 4-Tab Navigation Bar */}
+          <div className="hidden sm:flex items-center gap-2 bg-white dark:bg-slate-900 p-1.5 rounded-2xl border border-slate-200 dark:border-slate-800 shadow-sm">
+            {[
+              { id: 'overview' as const, label: t('sellerStudio.nav.overview'), icon: LayoutDashboard },
+              { id: 'listings' as const, label: t('sellerStudio.nav.listings'), icon: Package, badge: listings.length },
+              { id: 'sales' as const, label: t('sellerStudio.nav.sales'), icon: ReceiptText, badge: ongoingSalesCount },
+              { id: 'wallet' as const, label: t('sellerStudio.nav.wallet'), icon: Wallet },
+            ].map((tabItem) => {
+              const Icon = tabItem.icon;
+              const isActive = activeTab === tabItem.id;
+              return (
+                <button
+                  type="button"
+                  key={tabItem.id}
+                  onClick={() => setTab(tabItem.id)}
+                  className={`flex-1 flex items-center justify-center gap-2 py-2 px-3.5 rounded-xl text-xs sm:text-sm font-bold transition cursor-pointer ${
+                    isActive
+                      ? 'bg-emerald-500 text-slate-950 shadow-md font-black shadow-emerald-500/20'
+                      : 'text-slate-600 dark:text-slate-400 hover:text-slate-900 dark:hover:text-white hover:bg-slate-100 dark:hover:bg-slate-800/60'
                   }`}
                 >
-                  {tabItem.badge}
+                  <Icon className="w-4 h-4" />
+                  <span>{tabItem.label}</span>
+                  {tabItem.badge !== undefined && tabItem.badge > 0 && (
+                    <span
+                      className={`px-1.5 py-0.2 rounded-full text-[10px] font-mono font-bold ${
+                        isActive ? 'bg-slate-950 text-white' : 'bg-slate-200 dark:bg-slate-800 text-slate-700 dark:text-slate-300'
+                      }`}
+                    >
+                      {tabItem.badge}
+                    </span>
+                  )}
+                </button>
+              );
+            })}
+          </div>
+        </div>
+      ) : (
+        /* ------------------------------------------------------------ */
+        /* 2. SECONDARY TABS: Compact Single-Row Navigation & Actions  */
+        /* ------------------------------------------------------------ */
+        <div className="space-y-2">
+          {/* Desktop Compact Top Bar (Tabs + Switcher + Post Button) */}
+          <div className="hidden sm:flex items-center justify-between gap-3 bg-white dark:bg-slate-900 p-1.5 rounded-2xl border border-slate-200 dark:border-slate-800 shadow-sm">
+            <div className="flex items-center gap-1.5 flex-1">
+              {[
+                { id: 'overview' as const, label: t('sellerStudio.nav.overview'), icon: LayoutDashboard },
+                { id: 'listings' as const, label: t('sellerStudio.nav.listings'), icon: Package, badge: listings.length },
+                { id: 'sales' as const, label: t('sellerStudio.nav.sales'), icon: ReceiptText, badge: ongoingSalesCount },
+                { id: 'wallet' as const, label: t('sellerStudio.nav.wallet'), icon: Wallet },
+              ].map((tabItem) => {
+                const Icon = tabItem.icon;
+                const isActive = activeTab === tabItem.id;
+                return (
+                  <button
+                    type="button"
+                    key={tabItem.id}
+                    onClick={() => setTab(tabItem.id)}
+                    className={`flex items-center gap-1.5 py-2 px-3.5 rounded-xl text-xs font-bold transition cursor-pointer ${
+                      isActive
+                        ? 'bg-emerald-500 text-slate-950 shadow-sm font-black shadow-emerald-500/20'
+                        : 'text-slate-600 dark:text-slate-400 hover:text-slate-900 dark:hover:text-white hover:bg-slate-100 dark:hover:bg-slate-800/60'
+                    }`}
+                  >
+                    <Icon className="w-3.5 h-3.5" />
+                    <span>{tabItem.label}</span>
+                    {tabItem.badge !== undefined && tabItem.badge > 0 && (
+                      <span
+                        className={`px-1.5 py-0.2 rounded-full text-[10px] font-mono font-bold ${
+                          isActive ? 'bg-slate-950 text-white' : 'bg-slate-200 dark:bg-slate-800 text-slate-700 dark:text-slate-300'
+                        }`}
+                      >
+                        {tabItem.badge}
+                      </span>
+                    )}
+                  </button>
+                );
+              })}
+            </div>
+
+            {/* Compact Switch to Buyer & Post Listing Buttons */}
+            <div className="flex items-center gap-2 pr-1">
+              {onSwitchToBuyerMode && (
+                <button
+                  type="button"
+                  onClick={onSwitchToBuyerMode}
+                  className="px-3 py-1.5 rounded-xl bg-slate-100 dark:bg-slate-800 hover:bg-slate-200 dark:hover:bg-slate-700 text-slate-700 dark:text-slate-300 text-xs font-bold transition flex items-center gap-1.5 cursor-pointer shadow-xs active:scale-95"
+                  title={t('sellerStudio.switchToBuyer')}
+                >
+                  <ShoppingBag className="w-3.5 h-3.5 text-emerald-500" />
+                  <span>{t('sellerStudio.switchToBuyer')}</span>
+                </button>
+              )}
+
+              <button
+                type="button"
+                onClick={onOpenSellModal}
+                className="px-3 py-1.5 rounded-xl bg-emerald-500 hover:bg-emerald-400 text-slate-950 text-xs font-black transition flex items-center gap-1.5 cursor-pointer shadow-sm active:scale-95"
+              >
+                <PlusCircle className="w-3.5 h-3.5" />
+                <span>{t('sellerStudio.listings.postNew')}</span>
+              </button>
+            </div>
+          </div>
+
+          {/* Mobile Sleek Sub-Header for Secondary Tabs */}
+          <div className="sm:hidden flex items-center justify-between gap-2 bg-white dark:bg-slate-900 px-3 py-2 rounded-2xl border border-slate-200 dark:border-slate-800 shadow-xs">
+            <div className="flex items-center gap-2">
+              <span className="text-xs font-black text-slate-900 dark:text-white">
+                {activeTab === 'listings' && t('sellerStudio.nav.listings')}
+                {activeTab === 'sales' && t('sellerStudio.nav.sales')}
+                {activeTab === 'wallet' && t('sellerStudio.nav.wallet')}
+              </span>
+              {activeTab === 'listings' && (
+                <span className="px-1.5 py-0.2 rounded-full bg-slate-100 dark:bg-slate-800 text-slate-600 dark:text-slate-400 text-[10px] font-mono font-bold">
+                  {listings.length}
                 </span>
               )}
-            </button>
-          );
-        })}
-      </div>
+              {activeTab === 'sales' && ongoingSalesCount > 0 && (
+                <span className="px-1.5 py-0.2 rounded-full bg-emerald-500/20 text-emerald-500 text-[10px] font-mono font-bold">
+                  {ongoingSalesCount}
+                </span>
+              )}
+            </div>
+
+            {onSwitchToBuyerMode && (
+              <button
+                type="button"
+                onClick={onSwitchToBuyerMode}
+                className="px-2.5 py-1 rounded-xl bg-slate-100 dark:bg-slate-800 text-slate-700 dark:text-slate-300 text-[11px] font-bold flex items-center gap-1 active:scale-95 cursor-pointer"
+              >
+                <ShoppingBag className="w-3 h-3 text-emerald-500" />
+                <span>{t('sellerStudio.switchToBuyer')}</span>
+              </button>
+            )}
+          </div>
+        </div>
+      )}
 
       {/* ======================================================== */}
       {/* TAB 1: OVERVIEW DASHBOARD                                */}
