@@ -22,6 +22,7 @@ import { NotificationsModal } from './components/NotificationsModal';
 import { UserProfileView } from './components/UserProfileView';
 import { SettingsModal } from './components/SettingsModal';
 import { KycVerificationModal } from './components/KycVerificationModal';
+import { KycRequiredModal, KycPendingModal } from './components/KycGateModals';
 import { MobileBottomNav } from './components/MobileBottomNav';
 import { MobileFilterDrawer } from './components/MobileFilterDrawer';
 import { PWAInstallBanner } from './components/PWAInstallBanner';
@@ -87,12 +88,32 @@ function MainApp() {
   const [kycStatus, setKycStatus] = useState<KycStatus>('VERIFIED');
   const [kycSubmissions, setKycSubmissions] = useState<KycSubmission[]>(INITIAL_KYC_SUBMISSIONS);
   const [isKycModalOpen, setIsKycModalOpen] = useState(false);
+  const [isKycRequiredModalOpen, setIsKycRequiredModalOpen] = useState(false);
+  const [isKycPendingModalOpen, setIsKycPendingModalOpen] = useState(false);
 
   // Modals State
   const [inspectListing, setInspectListing] = useState<AccountListing | null>(null);
   const [buyListing, setBuyListing] = useState<AccountListing | null>(null);
   const [isSellModalOpen, setIsSellModalOpen] = useState(false);
   const [isSettingsOpen, setIsSettingsOpen] = useState(false);
+  const [savedListingIds, setSavedListingIds] = useState<string[]>(['ef-02', 'ml-01', 'pubg-01']);
+
+  // KYC Gate Check Handler for Selling Accounts (+ Button)
+  const handleOpenSellModal = () => {
+    if (kycStatus === 'VERIFIED') {
+      setIsSellModalOpen(true);
+    } else if (kycStatus === 'PENDING') {
+      setIsKycPendingModalOpen(true);
+    } else {
+      setIsKycRequiredModalOpen(true);
+    }
+  };
+
+  const handleToggleSaveListing = (listingId: string) => {
+    setSavedListingIds((prev) =>
+      prev.includes(listingId) ? prev.filter((id) => id !== listingId) : [...prev, listingId]
+    );
+  };
 
   // Game counts calculation
   const gameCounts = useMemo(() => {
@@ -486,7 +507,7 @@ function MainApp() {
         setUserRole={setUserRole}
         searchQuery={searchQuery}
         setSearchQuery={setSearchQuery}
-        openSellModal={() => setIsSellModalOpen(true)}
+        openSellModal={handleOpenSellModal}
         onOpenSettings={() => setIsSettingsOpen(true)}
         onOpenNotifications={() => setIsNotificationsOpen(true)}
         unreadNotificationsCount={3}
@@ -507,7 +528,7 @@ function MainApp() {
               if (game) setSelectedGame(game);
               setCurrentTab('marketplace');
             }}
-            onOpenSellModal={() => setIsSellModalOpen(true)}
+            onOpenSellModal={handleOpenSellModal}
             onInspectListing={(item) => setInspectListing(item)}
             onBuyListing={(item) => setBuyListing(item)}
           />
@@ -827,7 +848,7 @@ function MainApp() {
             listings={listings}
             orders={orders}
             payouts={payouts}
-            onOpenSellModal={() => setIsSellModalOpen(true)}
+            onOpenSellModal={handleOpenSellModal}
             onRequestPayout={handleRequestSellerPayout}
             onUpdateListing={handleUpdateListing}
             onDeleteListing={handleDeleteListing}
@@ -871,19 +892,11 @@ function MainApp() {
         {/* View 6: User Profile & Settings Dashboard */}
         {currentTab === 'profile' && (
           <UserProfileView
-            onOpenSettings={() => setIsSettingsOpen(true)}
-            onOpenSellModal={() => setIsSellModalOpen(true)}
+            onOpenSettings={(tab) => setIsSettingsOpen(true)}
             onOpenKycModal={() => setIsKycModalOpen(true)}
             kycStatus={kycStatus}
             userRole={userRole}
             onNavigateToSellerStudio={() => setCurrentTab('seller')}
-            userListings={listings.filter((l) => l.seller.name.includes('Kyaw') || l.seller.name.includes('You') || l.id === 'ef-01')}
-            userOrders={orders}
-            onSelectOrder={(orderId) => {
-              setSelectedOrderId(orderId);
-              setCurrentTab('orders');
-            }}
-            onInspectListing={(listing) => setInspectListing(listing)}
           />
         )}
       </div>
@@ -895,7 +908,7 @@ function MainApp() {
       <MobileBottomNav
         currentTab={currentTab}
         setCurrentTab={setCurrentTab}
-        openSellModal={() => setIsSellModalOpen(true)}
+        openSellModal={handleOpenSellModal}
         activeOrdersCount={orders.filter((o) => o.status !== 'COMPLETED').length}
         kycStatus={kycStatus}
         userRole={userRole}
@@ -972,6 +985,21 @@ function MainApp() {
         isOpen={isKycModalOpen}
         onClose={() => setIsKycModalOpen(false)}
         onSubmit={handleKycSubmit}
+      />
+
+      {/* KYC Gate Alert Modals for Listing Accounts */}
+      <KycRequiredModal
+        isOpen={isKycRequiredModalOpen}
+        onClose={() => setIsKycRequiredModalOpen(false)}
+        onApplyNow={() => {
+          setIsKycRequiredModalOpen(false);
+          setIsKycModalOpen(true);
+        }}
+      />
+
+      <KycPendingModal
+        isOpen={isKycPendingModalOpen}
+        onClose={() => setIsKycPendingModalOpen(false)}
       />
     </div>
   );

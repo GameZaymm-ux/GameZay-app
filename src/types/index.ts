@@ -173,6 +173,16 @@ export interface AccountListing {
   createdAt: string;
 }
 
+export interface BuyerRefundInfo {
+  refundMethod: string;
+  accountNumber: string;
+  accountName: string;
+  amountMMK: number;
+  txId?: string;
+  processedAt?: string;
+  status: 'PENDING' | 'PROCESSED';
+}
+
 export interface EscrowOrder {
   id: string;
   orderNumber: string;
@@ -199,6 +209,7 @@ export interface EscrowOrder {
   createdAt: string;
   inspectionDeadline?: string;
   disputeInfo?: DisputeInfo;
+  refundInfo?: BuyerRefundInfo;
   chatMessages?: ChatMessage[];
 }
 

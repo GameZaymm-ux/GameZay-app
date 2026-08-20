@@ -133,6 +133,37 @@ export const EscrowOrderTracker: React.FC<EscrowOrderTrackerProps> = ({
     'https://images.unsplash.com/photo-1618005182384-a83a8bd57fbe?w=800&auto=format&fit=crop&q=80',
   ]);
 
+  // Direct External Refund Form State
+  const [refundMethod, setRefundMethod] = useState<string>('KBZ_PAY');
+  const [refundAccountNumber, setRefundAccountNumber] = useState<string>('09450012345');
+  const [refundAccountName, setRefundAccountName] = useState<string>('Kyaw Zin Win');
+  const [customRefunds, setCustomRefunds] = useState<Record<string, any>>({});
+  const [isRefundSubmitting, setIsRefundSubmitting] = useState(false);
+  const [refundSuccessToast, setRefundSuccessToast] = useState(false);
+
+  const handleRefundSubmit = (orderId: string) => {
+    setIsRefundSubmitting(true);
+    setTimeout(() => {
+      setIsRefundSubmitting(false);
+      const newRefundInfo = {
+        refundMethod,
+        accountNumber: refundAccountNumber,
+        accountName: refundAccountName,
+        amountMMK: activeOrder?.amountMMK || 0,
+        txId: `${refundMethod === 'KBZ_PAY' ? 'KPay' : refundMethod === 'WAVE_PAY' ? 'WAVE' : 'BANK'}-REF-${Math.floor(1000000 + Math.random() * 9000000)}`,
+        processedAt: new Date().toISOString(),
+        status: 'PROCESSED' as const,
+      };
+      setCustomRefunds((prev) => ({
+        ...prev,
+        [orderId]: newRefundInfo,
+      }));
+      onUpdateOrderStatus(orderId, 'REFUNDED');
+      setRefundSuccessToast(true);
+      setTimeout(() => setRefundSuccessToast(false), 4000);
+    }, 600);
+  };
+
   // Filter Categories Logic
   const isOngoing = (status: EscrowStatus) =>
     ['PENDING_PAYMENT_PROOF', 'PAYMENT_VERIFYING', 'ESCROW_LOCKED', 'CREDENTIALS_DISPATCHED', 'CREDENTIALS_DELIVERED', 'INSPECTION_PERIOD', 'DISPUTED'].includes(status);
@@ -634,14 +665,14 @@ export const EscrowOrderTracker: React.FC<EscrowOrderTrackerProps> = ({
                   </div>
                 )}
 
-                {/* Stage 4: Disputed */}
+                {/* Stage 4: Disputed with Direct External Refund Input */}
                 {activeOrder.status === 'DISPUTED' && (
-                  <div className="p-5 rounded-2xl bg-rose-50 dark:bg-rose-950/40 border border-rose-300 dark:border-rose-700 text-rose-900 dark:text-rose-200 space-y-3">
+                  <div className="p-5 rounded-3xl bg-rose-50 dark:bg-rose-950/40 border border-rose-300 dark:border-rose-700 text-rose-900 dark:text-rose-200 space-y-4">
                     <div className="flex items-start gap-3">
                       <ShieldAlert className="w-5 h-5 text-rose-500 shrink-0 mt-0.5" />
                       <div>
                         <h4 className="text-xs font-black">
-                          {isMM ? 'အငြင်းပွားမှု ဖြစ်ပွားနေသည် (Funds Frozen)' : 'Dispute Claim Active'}
+                          {isMM ? 'အငြင်းပွားမှု စိစစ်နေဆဲ (Escrow Vault တွင် ငွေထိန်းသိမ်းထားပါသည်)' : 'Dispute Claim Active (Vault Locked)'}
                         </h4>
                         <p className="text-[11px] text-rose-800 dark:text-rose-300 mt-1 leading-relaxed">
                           {activeOrder.disputeInfo?.description || 'Escrow funds are safely frozen in vault while GameZay Arbiter investigates credentials.'}
@@ -649,14 +680,172 @@ export const EscrowOrderTracker: React.FC<EscrowOrderTrackerProps> = ({
                       </div>
                     </div>
 
-                    <button
-                      onClick={() => handleTabChange('live_chat')}
-                      className="px-4 py-2 rounded-xl bg-rose-600 hover:bg-rose-500 text-white font-bold text-xs transition"
-                    >
-                      Join 3-Party Dispute Resolution Chat
-                    </button>
+                    {/* Direct External Refund Account Prompt */}
+                    <div className="p-4 rounded-2xl bg-white dark:bg-slate-900 border border-rose-200 dark:border-rose-800/80 space-y-3">
+                      <div className="flex items-center gap-2">
+                        <Receipt className="w-4 h-4 text-cyan-500" />
+                        <h5 className="text-xs font-black text-slate-900 dark:text-white">
+                          {t('refund.promptTitle')}
+                        </h5>
+                      </div>
+                      <p className="text-[11px] text-slate-500 dark:text-slate-400">
+                        {t('refund.promptDesc')}
+                      </p>
+
+                      <div className="grid grid-cols-1 sm:grid-cols-3 gap-3 pt-1">
+                        <div>
+                          <label className="block text-[10px] font-bold text-slate-500 dark:text-slate-400 mb-1">
+                            {t('refund.selectMethod')}
+                          </label>
+                          <select
+                            value={refundMethod}
+                            onChange={(e) => setRefundMethod(e.target.value)}
+                            aria-label={t('refund.selectMethod')}
+                            className="w-full px-3 py-2 rounded-xl bg-slate-50 dark:bg-slate-950 border border-slate-200 dark:border-slate-800 text-xs font-bold text-slate-900 dark:text-white focus:outline-none focus:border-cyan-500"
+                          >
+                            <option value="KBZ_PAY">KBZPay (KPay)</option>
+                            <option value="WAVE_PAY">WavePay</option>
+                            <option value="AYA_PAY">AYA Pay</option>
+                            <option value="CB_PAY">CB Pay</option>
+                            <option value="PROMPTPAY">PromptPay (THB)</option>
+                          </select>
+                        </div>
+
+                        <div>
+                          <label className="block text-[10px] font-bold text-slate-500 dark:text-slate-400 mb-1">
+                            {t('refund.accountNumber')}
+                          </label>
+                          <input
+                            type="text"
+                            value={refundAccountNumber}
+                            onChange={(e) => setRefundAccountNumber(e.target.value)}
+                            placeholder={t('refund.accountNumberPlaceholder')}
+                            className="w-full px-3 py-2 rounded-xl bg-slate-50 dark:bg-slate-950 border border-slate-200 dark:border-slate-800 text-xs font-bold text-slate-900 dark:text-white focus:outline-none focus:border-cyan-500 font-mono"
+                          />
+                        </div>
+
+                        <div>
+                          <label className="block text-[10px] font-bold text-slate-500 dark:text-slate-400 mb-1">
+                            {t('refund.accountName')}
+                          </label>
+                          <input
+                            type="text"
+                            value={refundAccountName}
+                            onChange={(e) => setRefundAccountName(e.target.value)}
+                            placeholder={t('refund.accountNamePlaceholder')}
+                            className="w-full px-3 py-2 rounded-xl bg-slate-50 dark:bg-slate-950 border border-slate-200 dark:border-slate-800 text-xs font-bold text-slate-900 dark:text-white focus:outline-none focus:border-cyan-500"
+                          />
+                        </div>
+                      </div>
+
+                      <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-3 pt-2">
+                        <button
+                          type="button"
+                          onClick={() => handleRefundSubmit(activeOrder.id)}
+                          disabled={isRefundSubmitting || !refundAccountNumber.trim()}
+                          className="px-5 py-2 rounded-xl bg-gradient-to-r from-cyan-500 to-blue-500 hover:from-cyan-400 hover:to-blue-400 text-slate-950 text-xs font-black shadow-md shadow-cyan-500/20 transition cursor-pointer disabled:opacity-50"
+                        >
+                          {isRefundSubmitting ? 'Processing Payout...' : t('refund.submitBtn')}
+                        </button>
+
+                        <button
+                          type="button"
+                          onClick={() => handleTabChange('live_chat')}
+                          className="px-4 py-2 rounded-xl bg-rose-600 hover:bg-rose-500 text-white font-bold text-xs transition cursor-pointer"
+                        >
+                          Join 3-Party Dispute Chat
+                        </button>
+                      </div>
+                    </div>
                   </div>
                 )}
+
+                {/* Stage 5: Refunded - DIRECT EXTERNAL REFUND RECEIPT */}
+                {activeOrder.status === 'REFUNDED' && (() => {
+                  const currentRefund = customRefunds[activeOrder.id] || activeOrder.refundInfo || {
+                    refundMethod: activeOrder.paymentMethod || 'WAVE_PAY',
+                    accountNumber: activeOrder.senderPhone || '09421122334',
+                    accountName: activeOrder.buyerName || 'Zaw Moe Aung',
+                    amountMMK: activeOrder.amountMMK,
+                    txId: 'WAVE-REF-8829104',
+                    processedAt: activeOrder.createdAt,
+                    status: 'PROCESSED',
+                  };
+
+                  return (
+                    <div className="p-6 rounded-3xl bg-gradient-to-br from-cyan-500/10 via-emerald-500/5 to-slate-900 border border-cyan-500/30 text-slate-900 dark:text-white space-y-4 shadow-lg animate-in fade-in">
+                      {/* Receipt Top Header */}
+                      <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-3 pb-3 border-b border-cyan-500/20">
+                        <div className="flex items-center gap-3">
+                          <div className="p-3 rounded-2xl bg-cyan-500 text-slate-950 shadow-md shadow-cyan-500/30">
+                            <Receipt className="w-5 h-5" />
+                          </div>
+                          <div>
+                            <h4 className="text-sm sm:text-base font-black text-slate-900 dark:text-white flex items-center gap-2">
+                              <span>{t('refund.receiptTitle')}</span>
+                              <span className="text-[10px] font-bold px-2 py-0.5 rounded-full bg-emerald-500 text-slate-950">
+                                100% Payout Complete
+                              </span>
+                            </h4>
+                            <p className="text-xs text-cyan-600 dark:text-cyan-400 font-medium">
+                              {t('refund.receiptDesc')}
+                            </p>
+                          </div>
+                        </div>
+
+                        <div className="text-right">
+                          <div className="text-base sm:text-lg font-black text-emerald-500 font-mono">
+                            {formatMMK(activeOrder.amountMMK)}
+                          </div>
+                          <div className="text-[10px] text-cyan-500 font-mono">
+                            ≈ {formatTHB(convertMMKtoTHB(activeOrder.amountMMK))}
+                          </div>
+                        </div>
+                      </div>
+
+                      {/* Confirmation Highlight Message */}
+                      <div className="p-3.5 rounded-2xl bg-white dark:bg-slate-950/80 border border-cyan-500/30 text-xs text-slate-700 dark:text-slate-200 flex items-center gap-2.5">
+                        <CheckCircle2 className="w-4 h-4 text-emerald-400 shrink-0" />
+                        <span className="font-bold">
+                          {isMM
+                            ? `${formatMMK(activeOrder.amountMMK)} အား သင့် ${currentRefund.refundMethod} (${currentRefund.accountNumber} - ${currentRefund.accountName}) အကောင့်သို့ တိုက်ရိုက် ပြန်အမ်းပြီးပါပြီ။`
+                            : `Refunded ${formatMMK(activeOrder.amountMMK)} directly to your ${currentRefund.refundMethod} account (${currentRefund.accountNumber} - ${currentRefund.accountName}).`}
+                        </span>
+                      </div>
+
+                      {/* Payout Details Grid */}
+                      <div className="grid grid-cols-1 sm:grid-cols-3 gap-3 pt-1">
+                        <div className="p-3 rounded-xl bg-white dark:bg-slate-950 border border-slate-200 dark:border-slate-800 text-xs space-y-1">
+                          <div className="text-[10px] text-slate-400 font-bold uppercase">{t('refund.selectMethod')}</div>
+                          <div className="font-black text-cyan-500 font-mono">{currentRefund.refundMethod}</div>
+                          <div className="text-[11px] text-slate-600 dark:text-slate-400 font-mono">
+                            {currentRefund.accountNumber}
+                          </div>
+                        </div>
+
+                        <div className="p-3 rounded-xl bg-white dark:bg-slate-950 border border-slate-200 dark:border-slate-800 text-xs space-y-1">
+                          <div className="text-[10px] text-slate-400 font-bold uppercase">{t('refund.recipient')}</div>
+                          <div className="font-black text-slate-900 dark:text-white">{currentRefund.accountName}</div>
+                          <div className="text-[10px] text-emerald-500 font-mono">Verified Holder</div>
+                        </div>
+
+                        <div className="p-3 rounded-xl bg-white dark:bg-slate-950 border border-slate-200 dark:border-slate-800 text-xs space-y-1">
+                          <div className="text-[10px] text-slate-400 font-bold uppercase">{t('refund.txId')}</div>
+                          <div className="font-bold text-slate-900 dark:text-white font-mono truncate">
+                            {currentRefund.txId}
+                          </div>
+                          <div className="text-[10px] text-slate-400 font-mono">
+                            {new Date(currentRefund.processedAt).toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' })}
+                          </div>
+                        </div>
+                      </div>
+
+                      <div className="text-[11px] text-slate-500 dark:text-slate-400 text-center font-medium pt-1">
+                        🛡️ {t('refund.zeroDeduction')}
+                      </div>
+                    </div>
+                  );
+                })()}
               </div>
 
               {/* Counterparty & Trade Details */}
@@ -1069,6 +1258,20 @@ export const EscrowOrderTracker: React.FC<EscrowOrderTrackerProps> = ({
                         <div className="text-[11px] text-slate-500 dark:text-slate-400 truncate">
                           {t('orders.seller')}: <span className="font-semibold text-slate-700 dark:text-slate-300">{order.sellerName}</span>
                         </div>
+
+                        {order.status === 'REFUNDED' && (() => {
+                          const rInfo = customRefunds[order.id] || order.refundInfo;
+                          return (
+                            <div className="mt-1.5 p-2 rounded-xl bg-cyan-500/10 border border-cyan-500/30 text-cyan-600 dark:text-cyan-400 text-[10px] font-bold flex items-center gap-1.5">
+                              <Receipt className="w-3.5 h-3.5 text-cyan-500 shrink-0" />
+                              <span className="truncate">
+                                {isMM
+                                  ? `${formatMMK(order.amountMMK)} အား ${rInfo?.refundMethod || order.paymentMethod} (${rInfo?.accountNumber || order.senderPhone || '09421122334'}) သို့ တိုက်ရိုက် ပြန်အမ်းပြီး`
+                                  : `Refunded ${formatMMK(order.amountMMK)} directly to your ${rInfo?.refundMethod || order.paymentMethod} account`}
+                              </span>
+                            </div>
+                          );
+                        })()}
                       </div>
                     </div>
 

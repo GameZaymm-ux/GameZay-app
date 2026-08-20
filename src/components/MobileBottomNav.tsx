@@ -46,15 +46,7 @@ export const MobileBottomNav: React.FC<MobileBottomNavProps> = ({
   const { t, isMM } = useLanguage();
 
   const handleSellClick = () => {
-    if (userRole !== 'ADMIN' && userRole !== 'SELLER' && kycStatus !== 'VERIFIED') {
-      if (onOpenKycModal) {
-        onOpenKycModal();
-      } else {
-        openSellModal();
-      }
-    } else {
-      openSellModal();
-    }
+    openSellModal();
   };
 
   // -------------------------------------------------------------

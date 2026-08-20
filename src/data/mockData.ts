@@ -770,6 +770,15 @@ export const INITIAL_ORDERS: EscrowOrder[] = [
       transferNotes: 'Supercell ID locked by Google Play protection.',
     },
     createdAt: '2026-08-15T12:00:00Z',
+    refundInfo: {
+      refundMethod: 'WAVE_PAY',
+      accountNumber: '09421122334',
+      accountName: 'Zaw Moe Aung',
+      amountMMK: 450000,
+      txId: 'WAVE-REF-8829104',
+      processedAt: '2026-08-16T02:15:00Z',
+      status: 'PROCESSED',
+    },
     disputeInfo: {
       reason: 'Supercell ID 2FA unremovable by seller',
       reasonCode: 'UNREMOVABLE_BIND',
