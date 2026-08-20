@@ -285,6 +285,37 @@ function MainApp() {
     );
   };
 
+  const handleDeliverCredentials = (
+    orderId: string,
+    credentials: NonNullable<EscrowOrder['credentials']>
+  ) => {
+    const deliverMsg: ChatMessage = {
+      id: `msg-${Date.now()}`,
+      orderId,
+      senderRole: 'SELLER',
+      senderName: 'Seller (Game Owner)',
+      text: `🔑 CREDENTIALS DISPATCHED: Game login credentials have been submitted into the secure Escrow vault for Buyer inspection. (Auth: ${credentials.authType || 'Direct Handover'})`,
+      attachmentType: 'CREDENTIAL',
+      createdAt: new Date().toISOString(),
+    };
+
+    setOrders((prev) =>
+      prev.map((o) => {
+        if (o.id === orderId) {
+          const currentMsgs = o.chatMessages || [];
+          return {
+            ...o,
+            status: 'CREDENTIALS_DISPATCHED' as const,
+            credentials,
+            inspectionDeadline: new Date(Date.now() + 24 * 60 * 60 * 1000).toISOString(),
+            chatMessages: [...currentMsgs, deliverMsg],
+          };
+        }
+        return o;
+      })
+    );
+  };
+
   const handleAdminRefundBuyer = (orderId: string) => {
     const targetOrder = orders.find((o) => o.id === orderId);
     const amountStr = targetOrder ? targetOrder.amountMMK.toLocaleString() : '';
@@ -800,6 +831,9 @@ function MainApp() {
             onRequestPayout={handleRequestSellerPayout}
             onUpdateListing={handleUpdateListing}
             onDeleteListing={handleDeleteListing}
+            onDeliverCredentials={handleDeliverCredentials}
+            onSendMessage={handleSendMessage}
+            onOpenDispute={handleOpenDispute}
             kycStatus={kycStatus}
             onOpenKycModal={() => setIsKycModalOpen(true)}
             userRole={userRole}
