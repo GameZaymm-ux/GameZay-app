@@ -15,7 +15,7 @@ import { EscrowCheckoutModal } from './components/EscrowCheckoutModal';
 import { EscrowOrderTracker } from './components/EscrowOrderTracker';
 import { SellAccountModal } from './components/SellAccountModal';
 import { AdminDashboard } from './components/AdminDashboard';
-import { SellerDashboard } from './components/SellerDashboard';
+import { SellerDashboard, SellerTabType } from './components/SellerDashboard';
 import { PrismaSchemaViewer } from './components/PrismaSchemaViewer';
 import { HomePageView } from './components/HomePageView';
 import { NotificationsModal } from './components/NotificationsModal';
@@ -62,6 +62,7 @@ function MainApp() {
     'home' | 'marketplace' | 'orders' | 'sell' | 'admin' | 'seller' | 'schema' | 'profile'
   >('home');
   const [userRole, setUserRole] = useState<UserRole>('BUYER');
+  const [sellerTab, setSellerTab] = useState<SellerTabType>('overview');
   const [isNotificationsOpen, setIsNotificationsOpen] = useState(false);
 
   // Listings & Filter State
@@ -802,6 +803,13 @@ function MainApp() {
             kycStatus={kycStatus}
             onOpenKycModal={() => setIsKycModalOpen(true)}
             userRole={userRole}
+            activeSellerTab={sellerTab}
+            setActiveSellerTab={setSellerTab}
+            onSwitchToBuyerMode={() => setCurrentTab('home')}
+            onSelectOrder={(orderId) => {
+              setSelectedOrderId(orderId);
+              setCurrentTab('orders');
+            }}
           />
         )}
 
@@ -849,7 +857,7 @@ function MainApp() {
       {/* Footer */}
       <Footer />
 
-      {/* Mobile Bottom Navigation Bar (5 Primary Touch Destinations: Home, Market, Sell, Orders, Profile) */}
+      {/* Mobile Bottom Navigation Bar (5 Primary Touch Destinations) */}
       <MobileBottomNav
         currentTab={currentTab}
         setCurrentTab={setCurrentTab}
@@ -858,6 +866,10 @@ function MainApp() {
         kycStatus={kycStatus}
         userRole={userRole}
         onOpenKycModal={() => setIsKycModalOpen(true)}
+        sellerTab={sellerTab}
+        onSellerTabChange={setSellerTab}
+        onSwitchToBuyerMode={() => setCurrentTab('home')}
+        pendingSalesCount={orders.filter((o) => ['PAYMENT_VERIFYING', 'ESCROW_LOCKED', 'CREDENTIALS_DISPATCHED', 'CREDENTIALS_DELIVERED', 'INSPECTION_PERIOD', 'DISPUTED'].includes(o.status)).length}
       />
 
       {/* Notifications Drawer / Modal */}
