@@ -136,6 +136,17 @@ export interface COCAttributes {
 
 export type DynamicAttributes = EfootballAttributes | MLBBAttributes | PUBGAttributes | COCAttributes | Record<string, any>;
 
+export interface MerchantSubscription {
+  isActive: boolean;
+  plan: 'PRO_MONTHLY' | 'PRO_ANNUAL' | 'NONE';
+  subscribedAt?: string;
+  expiresAt?: string;
+  bumpQuotaRemaining: number;
+  bumpQuotaTotal: number;
+  monthlyFeeMMK?: number;
+  autoRenew: boolean;
+}
+
 export interface AccountListing {
   id: string;
   orderPrefix?: string;
@@ -146,6 +157,8 @@ export interface AccountListing {
   priceUSDT: number;
   status: 'AVAILABLE' | 'IN_ESCROW' | 'SOLD';
   isVerifiedSeller: boolean;
+  isProMerchant?: boolean;
+  bumpedAt?: string;
   instantDelivery: boolean;
   views: number;
   rating: number;
@@ -158,6 +171,8 @@ export interface AccountListing {
     rating: number;
     responseMinutes: number;
     joinedDate: string;
+    isProMerchant?: boolean;
+    merchantBadge?: string;
   };
   bindingStatus: string;
   attributes: DynamicAttributes;

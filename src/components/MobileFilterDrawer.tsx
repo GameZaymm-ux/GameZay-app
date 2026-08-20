@@ -1,7 +1,7 @@
 import React from 'react';
 import { useLanguage } from '../context/LanguageContext';
 import { GameType } from '../types';
-import { X, CheckCircle2, SlidersHorizontal, ArrowUpDown, RotateCcw } from 'lucide-react';
+import { X, CheckCircle2, SlidersHorizontal, ArrowUpDown, RotateCcw, Crown } from 'lucide-react';
 
 interface MobileFilterDrawerProps {
   isOpen: boolean;
@@ -10,6 +10,8 @@ interface MobileFilterDrawerProps {
   setSelectedGame: (game: GameType | 'all') => void;
   verifiedOnly: boolean;
   setVerifiedOnly: (val: boolean) => void;
+  proMerchantsOnly?: boolean;
+  setProMerchantsOnly?: (val: boolean) => void;
   sortBy: 'newest' | 'price_low' | 'price_high' | 'popular';
   setSortBy: (sort: 'newest' | 'price_low' | 'price_high' | 'popular') => void;
   minPrice: number | '';
@@ -26,6 +28,8 @@ export const MobileFilterDrawer: React.FC<MobileFilterDrawerProps> = ({
   setSelectedGame,
   verifiedOnly,
   setVerifiedOnly,
+  proMerchantsOnly = false,
+  setProMerchantsOnly,
   sortBy,
   setSortBy,
   minPrice,
@@ -41,6 +45,7 @@ export const MobileFilterDrawer: React.FC<MobileFilterDrawerProps> = ({
   const handleReset = () => {
     setSelectedGame('all');
     setVerifiedOnly(false);
+    if (setProMerchantsOnly) setProMerchantsOnly(false);
     setSortBy('newest');
     setMinPrice('');
     setMaxPrice('');
@@ -150,6 +155,27 @@ export const MobileFilterDrawer: React.FC<MobileFilterDrawerProps> = ({
             <div className="w-4 h-4 rounded-full bg-white shadow-md" />
           </button>
         </div>
+
+        {/* 3b. Pro Merchants Only Toggle */}
+        {setProMerchantsOnly && (
+          <div className="flex items-center justify-between p-3.5 bg-gradient-to-r from-amber-500/10 via-slate-950 to-slate-950 rounded-2xl border border-amber-500/30">
+            <div className="flex items-center gap-2">
+              <Crown className="w-4 h-4 text-amber-400 fill-amber-400" />
+              <span className="text-xs font-black text-amber-300">
+                {t('filters.proMerchantsOnly')}
+              </span>
+            </div>
+            <button
+              type="button"
+              onClick={() => setProMerchantsOnly(!proMerchantsOnly)}
+              className={`w-11 h-6 flex items-center rounded-full p-1 transition duration-300 ${
+                proMerchantsOnly ? 'bg-gradient-to-r from-amber-500 to-yellow-400 justify-end' : 'bg-slate-800 justify-start'
+              }`}
+            >
+              <div className="w-4 h-4 rounded-full bg-slate-950 shadow-md" />
+            </button>
+          </div>
+        )}
 
         {/* 4. Sort Order */}
         <div className="space-y-1.5">

@@ -1,7 +1,7 @@
 import React, { useState } from 'react';
 import { useLanguage } from '../context/LanguageContext';
 import { useTheme } from '../context/ThemeContext';
-import { KycStatus, UserRole } from '../types';
+import { KycStatus, UserRole, MerchantSubscription } from '../types';
 import {
   ShieldCheck,
   ShieldAlert,
@@ -22,6 +22,7 @@ import {
   Shield,
   User,
   Key,
+  Crown,
 } from 'lucide-react';
 
 interface UserProfileViewProps {
@@ -30,6 +31,7 @@ interface UserProfileViewProps {
   kycStatus?: KycStatus;
   userRole?: UserRole;
   onNavigateToSellerStudio?: () => void;
+  merchantSubscription?: MerchantSubscription;
 }
 
 export const UserProfileView: React.FC<UserProfileViewProps> = ({
@@ -38,6 +40,7 @@ export const UserProfileView: React.FC<UserProfileViewProps> = ({
   kycStatus = 'VERIFIED',
   userRole = 'BUYER',
   onNavigateToSellerStudio,
+  merchantSubscription,
 }) => {
   const { t, language, setLanguage, currency, setCurrency, isMM } = useLanguage();
   const { theme, setTheme, actualTheme } = useTheme();
@@ -99,6 +102,12 @@ export const UserProfileView: React.FC<UserProfileViewProps> = ({
                 <span className="text-[10px] font-bold px-2 py-0.5 rounded-md bg-cyan-500/10 text-cyan-600 dark:text-cyan-400 border border-cyan-500/20 font-mono">
                   ID: #GZ-88910
                 </span>
+                {merchantSubscription?.isActive && (
+                  <span className="px-2 py-0.5 rounded-md bg-gradient-to-r from-amber-500 via-yellow-400 to-amber-500 text-slate-950 text-[10px] font-black flex items-center gap-1 shadow-sm font-mono">
+                    <Crown className="w-3 h-3 fill-slate-950" />
+                    <span>PRO MERCHANT</span>
+                  </span>
+                )}
               </div>
 
               <div className="flex flex-col sm:flex-row sm:items-center gap-1.5 sm:gap-4 text-xs text-slate-500 dark:text-slate-400">

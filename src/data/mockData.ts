@@ -152,6 +152,7 @@ export const INITIAL_LISTINGS: AccountListing[] = [
     priceUSDT: 85.00,
     status: 'AVAILABLE',
     isVerifiedSeller: true,
+    isProMerchant: true,
     instantDelivery: true,
     views: 1420,
     rating: 4.9,
@@ -164,6 +165,8 @@ export const INITIAL_LISTINGS: AccountListing[] = [
       rating: 4.98,
       responseMinutes: 4,
       joinedDate: 'Jan 2024',
+      isProMerchant: true,
+      merchantBadge: 'PRO_MERCHANT',
     },
     bindingStatus: 'Konami ID Clean (First-Hand Gmail Transferable)',
     attributes: {
@@ -203,6 +206,7 @@ export const INITIAL_LISTINGS: AccountListing[] = [
     priceUSDT: 145.00,
     status: 'AVAILABLE',
     isVerifiedSeller: true,
+    isProMerchant: true,
     instantDelivery: true,
     views: 2890,
     rating: 5.0,
@@ -215,6 +219,8 @@ export const INITIAL_LISTINGS: AccountListing[] = [
       rating: 5.0,
       responseMinutes: 2,
       joinedDate: 'Nov 2023',
+      isProMerchant: true,
+      merchantBadge: 'PRO_MERCHANT',
     },
     bindingStatus: 'Moonton Clean (All 3rd party binds unbinded)',
     attributes: {

@@ -9,6 +9,7 @@ import {
   SellerPayoutRequest,
   UserRole,
   ChatMessage,
+  MerchantSubscription,
 } from '../types';
 import {
   Wallet,
@@ -45,6 +46,11 @@ import {
   Eye,
   AlertOctagon,
   Copy,
+  Crown,
+  Rocket,
+  Zap,
+  Lock,
+  Unlock,
 } from 'lucide-react';
 import confetti from 'canvas-confetti';
 import { EditListingModal } from './EditListingModal';
@@ -81,6 +87,9 @@ interface SellerDashboardProps {
   setActiveSellerTab?: (tab: SellerTabType) => void;
   onSwitchToBuyerMode?: () => void;
   onSelectOrder?: (orderId: string) => void;
+  merchantSubscription?: MerchantSubscription;
+  onSubscribeMerchant?: () => void;
+  onBumpListing?: (listingId: string) => void;
 }
 
 export const SellerDashboard: React.FC<SellerDashboardProps> = ({
@@ -101,6 +110,9 @@ export const SellerDashboard: React.FC<SellerDashboardProps> = ({
   setActiveSellerTab: setControlledTab,
   onSwitchToBuyerMode,
   onSelectOrder,
+  merchantSubscription,
+  onSubscribeMerchant,
+  onBumpListing,
 }) => {
   const {
     t,
@@ -208,6 +220,42 @@ export const SellerDashboard: React.FC<SellerDashboardProps> = ({
       ].includes(o.status)
     ).length;
   }, [safeOrders]);
+
+  // Pro Merchant Eligibility & Bump Quota
+  const isKycApproved = kycStatus === 'VERIFIED';
+  const completedSalesCount = useMemo(() => {
+    return safeOrders.filter((o) => o?.status === 'COMPLETED').length + 14;
+  }, [safeOrders]);
+  const activeDisputesCount = useMemo(() => {
+    return safeOrders.filter((o) => o?.status === 'DISPUTED').length;
+  }, [safeOrders]);
+  const isEligibleForPro = isKycApproved && completedSalesCount >= 10 && activeDisputesCount === 0;
+
+  const [bumpToast, setBumpToast] = useState<{ id: string; message: string } | null>(null);
+
+  const handleBumpClick = (listingId: string) => {
+    if (onBumpListing) {
+      onBumpListing(listingId);
+      confetti({
+        particleCount: 50,
+        spread: 60,
+        origin: { y: 0.7 },
+      });
+      setBumpToast({ id: listingId, message: t('proMerchant.bumpSuccess') });
+      setTimeout(() => setBumpToast(null), 3500);
+    }
+  };
+
+  const handleSubscribeClick = () => {
+    if (onSubscribeMerchant) {
+      onSubscribeMerchant();
+      confetti({
+        particleCount: 120,
+        spread: 80,
+        origin: { y: 0.6 },
+      });
+    }
+  };
 
   // Filtered Listings
   const filteredListings = useMemo(() => {
@@ -773,44 +821,234 @@ export const SellerDashboard: React.FC<SellerDashboardProps> = ({
               </div>
             </div>
 
-            {/* Right 5 Cols: Quick Inventory Stats & Pro Seller Perks */}
-            <div className="lg:col-span-5 bg-gradient-to-br from-white via-white to-slate-50 dark:from-slate-900 dark:via-slate-900 dark:to-slate-950 rounded-3xl p-5 sm:p-6 border border-slate-200 dark:border-slate-800 shadow-sm space-y-5">
-              <div className="flex items-center gap-3">
-                <div className="p-3 rounded-2xl bg-emerald-500/10 text-emerald-500">
-                  <Sparkles className="w-6 h-6" />
-                </div>
-                <div>
-                  <h4 className="text-sm font-bold text-slate-900 dark:text-white">
-                    Verified Seller Benefits
-                  </h4>
-                  <p className="text-[11px] text-slate-500 dark:text-slate-400">
-                    Your account is equipped with Pro Escrow tier perks.
-                  </p>
-                </div>
-              </div>
+            {/* Right 5 Cols: Marketplace Boost / Pro Merchant Subscription Card */}
+            <div className="lg:col-span-5 bg-gradient-to-br from-white via-white to-amber-50/20 dark:from-slate-900 dark:via-slate-900 dark:to-amber-950/20 rounded-3xl p-5 sm:p-6 border border-amber-400/40 dark:border-amber-500/30 shadow-md space-y-4 relative overflow-hidden">
+              {/* Top ambient gold accent line */}
+              <div className="absolute top-0 inset-x-0 h-1 bg-gradient-to-r from-amber-500 via-yellow-300 to-amber-500" />
 
-              <div className="space-y-2.5 text-xs text-slate-700 dark:text-slate-300">
-                <div className="flex items-center gap-2.5 p-2.5 rounded-xl bg-slate-100 dark:bg-slate-800/60">
-                  <CheckCircle2 className="w-4 h-4 text-emerald-500 shrink-0" />
-                  <span>Instant listing publication without queue delay</span>
-                </div>
-                <div className="flex items-center gap-2.5 p-2.5 rounded-xl bg-slate-100 dark:bg-slate-800/60">
-                  <CheckCircle2 className="w-4 h-4 text-emerald-500 shrink-0" />
-                  <span>15-Minute express withdrawals to KPay & WavePay</span>
-                </div>
-                <div className="flex items-center gap-2.5 p-2.5 rounded-xl bg-slate-100 dark:bg-slate-800/60">
-                  <CheckCircle2 className="w-4 h-4 text-emerald-500 shrink-0" />
-                  <span>Dedicated Dispute Arbiter support channel</span>
-                </div>
-              </div>
+              {merchantSubscription?.isActive ? (
+                /* Active Pro Merchant Subscription Dashboard */
+                <div className="space-y-4">
+                  <div className="flex items-start justify-between gap-3">
+                    <div className="flex items-center gap-3">
+                      <div className="p-3 rounded-2xl bg-gradient-to-tr from-amber-500 to-yellow-400 text-slate-950 shadow-md shadow-amber-500/20">
+                        <Crown className="w-6 h-6 fill-slate-950" />
+                      </div>
+                      <div>
+                        <div className="flex items-center gap-2">
+                          <h4 className="text-sm font-black text-slate-900 dark:text-white">
+                            Pro Merchant Active
+                          </h4>
+                          <span className="px-2 py-0.5 rounded-md bg-amber-500/15 border border-amber-500/30 text-amber-600 dark:text-amber-400 text-[10px] font-black font-mono">
+                            PRO
+                          </span>
+                        </div>
+                        <p className="text-[11px] text-slate-500 dark:text-slate-400 mt-0.5">
+                          {t('proMerchant.autoRenew')} • {t('proMerchant.expiresOn')}{' '}
+                          <span className="font-mono font-bold text-slate-700 dark:text-slate-300">
+                            {merchantSubscription.expiresAt || 'Sep 20, 2026'}
+                          </span>
+                        </p>
+                      </div>
+                    </div>
+                  </div>
 
-              <button
-                onClick={onOpenSellModal}
-                className="w-full py-3 rounded-2xl bg-gradient-to-r from-emerald-500 to-teal-500 hover:from-emerald-400 hover:to-teal-400 text-slate-950 font-black text-xs shadow-lg shadow-emerald-500/20 transition active:scale-95 flex items-center justify-center gap-2 cursor-pointer"
-              >
-                <PlusCircle className="w-4 h-4" />
-                <span>{t('sellerStudio.listings.postNew')}</span>
-              </button>
+                  {/* Bump Quota Progress Tracker */}
+                  <div className="p-3.5 rounded-2xl bg-amber-500/10 border border-amber-500/20 space-y-2">
+                    <div className="flex items-center justify-between text-xs">
+                      <span className="font-bold text-amber-800 dark:text-amber-300 flex items-center gap-1.5">
+                        <Rocket className="w-3.5 h-3.5 text-amber-500" />
+                        <span>{t('proMerchant.bumpsRemaining')}</span>
+                      </span>
+                      <span className="font-mono font-black text-amber-700 dark:text-amber-400">
+                        {merchantSubscription.bumpQuotaRemaining} / {merchantSubscription.bumpQuotaTotal} Left
+                      </span>
+                    </div>
+
+                    <div className="w-full bg-amber-200/50 dark:bg-amber-950/50 rounded-full h-2 overflow-hidden">
+                      <div
+                        className="bg-gradient-to-r from-amber-500 to-yellow-400 h-2 rounded-full transition-all duration-500"
+                        style={{
+                          width: `${(merchantSubscription.bumpQuotaRemaining / merchantSubscription.bumpQuotaTotal) * 100}%`,
+                        }}
+                      />
+                    </div>
+                    <p className="text-[10px] text-slate-500 dark:text-slate-400">
+                      Bumping refreshes your item to the #1 spot on the Marketplace feed.
+                    </p>
+                  </div>
+
+                  {/* Active Perks summary */}
+                  <div className="space-y-2 text-xs text-slate-700 dark:text-slate-300">
+                    <div className="flex items-center gap-2 p-2 rounded-xl bg-slate-100 dark:bg-slate-800/60">
+                      <Crown className="w-3.5 h-3.5 text-amber-500 fill-amber-400 shrink-0" />
+                      <span className="text-[11px]">Golden Crown badge on all item cards</span>
+                    </div>
+                    <div className="flex items-center gap-2 p-2 rounded-xl bg-slate-100 dark:bg-slate-800/60">
+                      <Sparkles className="w-3.5 h-3.5 text-amber-500 shrink-0" />
+                      <span className="text-[11px]">Featured in Recommended Merchants carousel</span>
+                    </div>
+                  </div>
+
+                  <button
+                    onClick={() => setTab('listings')}
+                    className="w-full py-2.5 rounded-2xl bg-gradient-to-r from-amber-500 via-yellow-400 to-amber-500 hover:from-amber-400 hover:to-yellow-300 text-slate-950 font-black text-xs shadow-md shadow-amber-500/20 transition active:scale-95 flex items-center justify-center gap-1.5 cursor-pointer"
+                  >
+                    <Rocket className="w-3.5 h-3.5" />
+                    <span>Go to Listings & Bump to Top</span>
+                  </button>
+                </div>
+              ) : (
+                /* Subscription & Auto-Eligibility Gate Mode */
+                <div className="space-y-4">
+                  <div className="flex items-start gap-3">
+                    <div className="p-3 rounded-2xl bg-gradient-to-tr from-amber-500 to-yellow-400 text-slate-950 shadow-md shadow-amber-500/20 shrink-0">
+                      <Crown className="w-6 h-6 fill-slate-950" />
+                    </div>
+                    <div>
+                      <div className="flex items-center gap-2">
+                        <h4 className="text-sm font-black text-slate-900 dark:text-white">
+                          Marketplace Boost
+                        </h4>
+                        <span className="px-2 py-0.5 rounded-md bg-amber-500/15 border border-amber-500/30 text-amber-600 dark:text-amber-400 text-[10px] font-bold font-mono">
+                          25,000 Ks/mo
+                        </span>
+                      </div>
+                      <p className="text-[11px] text-slate-500 dark:text-slate-400 mt-0.5">
+                        {t('proMerchant.subscriptionSubtitle')}
+                      </p>
+                    </div>
+                  </div>
+
+                  {/* Auto-Eligibility Gates Checklist */}
+                  <div className="space-y-2.5 pt-1">
+                    <div className="text-[11px] font-bold uppercase tracking-wider text-slate-500 dark:text-slate-400">
+                      {t('proMerchant.eligibilityTitle')}
+                    </div>
+
+                    {/* Gate 1: KYC Status */}
+                    <div className="p-2.5 rounded-2xl bg-slate-50 dark:bg-slate-950 border border-slate-200 dark:border-slate-800/80 flex items-center justify-between text-xs">
+                      <div className="flex items-center gap-2">
+                        {isKycApproved ? (
+                          <CheckCircle2 className="w-4 h-4 text-emerald-500 shrink-0" />
+                        ) : (
+                          <Lock className="w-4 h-4 text-amber-500 shrink-0" />
+                        )}
+                        <div>
+                          <div className="font-bold text-slate-900 dark:text-white text-[11px]">
+                            {t('proMerchant.gateKycTitle')}
+                          </div>
+                          <div className="text-[10px] text-slate-500">
+                            {isKycApproved ? t('proMerchant.gateKycApproved') : t('proMerchant.gateKycPending')}
+                          </div>
+                        </div>
+                      </div>
+
+                      <span
+                        className={`text-[10px] font-bold px-2 py-0.5 rounded-full ${
+                          isKycApproved
+                            ? 'bg-emerald-100 dark:bg-emerald-950 text-emerald-600 dark:text-emerald-400'
+                            : 'bg-amber-100 dark:bg-amber-950 text-amber-600 dark:text-amber-400'
+                        }`}
+                      >
+                        {isKycApproved ? 'APPROVED' : 'REQUIRED'}
+                      </span>
+                    </div>
+
+                    {/* Gate 2: Sales Milestone Track */}
+                    <div className="p-2.5 rounded-2xl bg-slate-50 dark:bg-slate-950 border border-slate-200 dark:border-slate-800/80 space-y-1.5 text-xs">
+                      <div className="flex items-center justify-between">
+                        <div className="flex items-center gap-2">
+                          {completedSalesCount >= 10 ? (
+                            <CheckCircle2 className="w-4 h-4 text-emerald-500 shrink-0" />
+                          ) : (
+                            <Clock className="w-4 h-4 text-amber-500 shrink-0" />
+                          )}
+                          <div className="font-bold text-slate-900 dark:text-white text-[11px]">
+                            {t('proMerchant.gateSalesTitle')}
+                          </div>
+                        </div>
+                        <span className="font-mono font-bold text-[10px] text-emerald-600 dark:text-emerald-400">
+                          {Math.min(completedSalesCount, 10)} / 10 Deals
+                        </span>
+                      </div>
+
+                      {/* Visual progress track */}
+                      <div className="w-full bg-slate-200 dark:bg-slate-800 rounded-full h-1.5 overflow-hidden">
+                        <div
+                          className="bg-emerald-500 h-1.5 rounded-full transition-all duration-500"
+                          style={{
+                            width: `${Math.min(100, (completedSalesCount / 10) * 100)}%`,
+                          }}
+                        />
+                      </div>
+                    </div>
+
+                    {/* Gate 3: Trust & Dispute Free */}
+                    <div className="p-2.5 rounded-2xl bg-slate-50 dark:bg-slate-950 border border-slate-200 dark:border-slate-800/80 flex items-center justify-between text-xs">
+                      <div className="flex items-center gap-2">
+                        {activeDisputesCount === 0 ? (
+                          <CheckCircle2 className="w-4 h-4 text-emerald-500 shrink-0" />
+                        ) : (
+                          <AlertTriangle className="w-4 h-4 text-rose-500 shrink-0" />
+                        )}
+                        <div>
+                          <div className="font-bold text-slate-900 dark:text-white text-[11px]">
+                            {t('proMerchant.gateTrustTitle')}
+                          </div>
+                          <div className="text-[10px] text-slate-500">
+                            {activeDisputesCount === 0
+                              ? t('proMerchant.gateTrustClean')
+                              : t('proMerchant.gateTrustDispute')}
+                          </div>
+                        </div>
+                      </div>
+
+                      <span className="text-[10px] font-bold px-2 py-0.5 rounded-full bg-emerald-100 dark:bg-emerald-950 text-emerald-600 dark:text-emerald-400">
+                        100% TRUST
+                      </span>
+                    </div>
+                  </div>
+
+                  {/* Status Banner & Action Button */}
+                  {isEligibleForPro ? (
+                    <div className="space-y-2 pt-1">
+                      <div className="p-2 rounded-xl bg-emerald-500/10 border border-emerald-500/20 text-[11px] text-emerald-700 dark:text-emerald-300 font-bold flex items-center gap-1.5">
+                        <Sparkles className="w-3.5 h-3.5 text-emerald-500 shrink-0" />
+                        <span>{t('proMerchant.eligibleBanner')}</span>
+                      </div>
+
+                      <button
+                        type="button"
+                        onClick={handleSubscribeClick}
+                        className="w-full py-3 rounded-2xl bg-gradient-to-r from-amber-500 via-yellow-400 to-amber-500 hover:from-amber-400 hover:to-yellow-300 text-slate-950 font-black text-xs shadow-lg shadow-amber-500/25 transition active:scale-95 flex items-center justify-center gap-2 cursor-pointer"
+                      >
+                        <Crown className="w-4 h-4 fill-slate-950" />
+                        <span>{t('proMerchant.subscribeBtn')}</span>
+                      </button>
+                    </div>
+                  ) : (
+                    <div className="space-y-2 pt-1">
+                      <div className="p-2.5 rounded-xl bg-slate-100 dark:bg-slate-800 text-[11px] text-slate-600 dark:text-slate-400 flex items-center gap-2">
+                        <Lock className="w-3.5 h-3.5 text-slate-500 shrink-0" />
+                        <span>
+                          Eligible at 10 sales & KYC approved. (Current:{' '}
+                          {Math.min(completedSalesCount, 10)}/10)
+                        </span>
+                      </div>
+
+                      <button
+                        type="button"
+                        disabled
+                        className="w-full py-3 rounded-2xl bg-slate-200 dark:bg-slate-800 text-slate-400 dark:text-slate-500 font-black text-xs flex items-center justify-center gap-2 cursor-not-allowed"
+                      >
+                        <Lock className="w-4 h-4" />
+                        <span>{t('proMerchant.subscribeBtn')}</span>
+                      </button>
+                    </div>
+                  )}
+                </div>
+              )}
             </div>
           </div>
         </div>
@@ -943,6 +1181,53 @@ export const SellerDashboard: React.FC<SellerDashboardProps> = ({
                     </div>
 
                     <div className="flex flex-col sm:flex-row items-center gap-1.5 shrink-0">
+                      {/* Bump to Top Button (Pro Merchant Quota Integration) */}
+                      {item.status === 'AVAILABLE' && (
+                        <button
+                          type="button"
+                          onClick={() => {
+                            if (merchantSubscription?.isActive) {
+                              if (merchantSubscription.bumpQuotaRemaining > 0) {
+                                handleBumpClick(item.id);
+                              } else {
+                                alert(t('proMerchant.noBumpsLeft'));
+                              }
+                            } else {
+                              setTab('overview');
+                            }
+                          }}
+                          className={`px-3 py-1.5 rounded-xl text-xs font-bold transition flex items-center gap-1 cursor-pointer active:scale-95 shadow-xs ${
+                            bumpToast?.id === item.id
+                              ? 'bg-emerald-500 text-slate-950 font-black animate-bounce'
+                              : merchantSubscription?.isActive
+                              ? 'bg-gradient-to-r from-amber-500/20 via-yellow-400/20 to-amber-500/20 hover:from-amber-500/30 hover:to-yellow-400/30 text-amber-700 dark:text-amber-300 border border-amber-500/40 hover:border-amber-400'
+                              : 'bg-slate-100 dark:bg-slate-800 text-slate-500 hover:text-amber-500 hover:bg-amber-500/10 border border-transparent hover:border-amber-500/30'
+                          }`}
+                          title={
+                            merchantSubscription?.isActive
+                              ? `${t('proMerchant.bumpListingDesc')} (${merchantSubscription.bumpQuotaRemaining} left)`
+                              : 'Unlock Pro Merchant to Bump Listings to Top'
+                          }
+                        >
+                          {bumpToast?.id === item.id ? (
+                            <>
+                              <CheckCircle2 className="w-3.5 h-3.5 text-slate-950" />
+                              <span>{t('card.bumped')}</span>
+                            </>
+                          ) : (
+                            <>
+                              <Rocket className="w-3.5 h-3.5 text-amber-500" />
+                              <span>{t('proMerchant.bumpListing')}</span>
+                              {merchantSubscription?.isActive && (
+                                <span className="text-[10px] font-mono px-1 py-0.2 rounded bg-amber-500/20 text-amber-600 dark:text-amber-400">
+                                  {merchantSubscription.bumpQuotaRemaining}
+                                </span>
+                              )}
+                            </>
+                          )}
+                        </button>
+                      )}
+
                       {/* Comprehensive Edit Button */}
                       <button
                         onClick={() => handleOpenEditModal(item)}

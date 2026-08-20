@@ -12,6 +12,7 @@ import {
   ArrowUpRight,
   Shield,
   Coins,
+  Crown,
 } from 'lucide-react';
 
 interface ListingCardProps {
@@ -162,9 +163,16 @@ export const ListingCard: React.FC<ListingCardProps> = ({
     return null;
   };
 
+  const isPro = Boolean(listing.isProMerchant || listing.seller?.isProMerchant);
+
   return (
-    <div className="group relative w-full rounded-2xl bg-white dark:bg-slate-900/90 hover:bg-slate-50 dark:hover:bg-slate-900 border border-slate-200 dark:border-slate-800 hover:border-cyan-500/50 transition-all duration-300 shadow-sm hover:shadow-xl hover:shadow-cyan-500/10 flex flex-col overflow-hidden active:scale-[0.99]">
-      
+    <div
+      className={`group relative w-full rounded-2xl bg-white dark:bg-slate-900/90 hover:bg-slate-50 dark:hover:bg-slate-900 border transition-all duration-300 shadow-sm hover:shadow-xl flex flex-col overflow-hidden active:scale-[0.99] ${
+        isPro
+          ? 'border-amber-400/50 dark:border-amber-500/40 hover:border-amber-400 shadow-amber-500/5 hover:shadow-amber-500/15 ring-1 ring-amber-500/20'
+          : 'border-slate-200 dark:border-slate-800 hover:border-cyan-500/50 hover:shadow-cyan-500/10'
+      }`}
+    >
       {/* 1. Consistent Image Container (aspect-[4/3] ratio for all screen sizes) */}
       <div
         onClick={() => onInspect(listing)}
@@ -189,8 +197,14 @@ export const ListingCard: React.FC<ListingCardProps> = ({
           </span>
         </div>
 
-        {/* Top-Right: 100% Escrow Shield Pill */}
-        <div className="absolute top-2 sm:top-2.5 right-2 sm:right-2.5 z-10">
+        {/* Top-Right: Golden PRO MERCHANT Badge or Escrow Shield */}
+        <div className="absolute top-2 sm:top-2.5 right-2 sm:right-2.5 z-10 flex items-center gap-1">
+          {isPro && (
+            <span className="px-1.5 sm:px-2 py-0.5 sm:py-1 rounded-lg bg-gradient-to-r from-amber-400 via-yellow-300 to-amber-500 text-slate-950 text-[9px] sm:text-[10px] font-black flex items-center gap-1 shadow-lg shadow-amber-500/30 tracking-tight animate-in fade-in">
+              <Crown className="w-3 h-3 sm:w-3.5 sm:h-3.5 fill-slate-950" />
+              <span>PRO</span>
+            </span>
+          )}
           <span className="px-1.5 sm:px-2 py-0.5 sm:py-1 rounded-lg bg-slate-950/85 border border-cyan-500/40 text-cyan-300 text-[9px] sm:text-[11px] font-bold flex items-center gap-1 backdrop-blur-md shadow-lg">
             <ShieldCheck className="w-3 h-3 sm:w-3.5 sm:h-3.5 text-cyan-400" />
             <span>Escrow</span>
@@ -245,19 +259,36 @@ export const ListingCard: React.FC<ListingCardProps> = ({
           {/* Seller Line */}
           <div className="flex items-center justify-between text-[10px] sm:text-xs">
             <div className="flex items-center gap-1.5 min-w-0">
-              <img
-                src={listing.seller.avatar}
-                alt={listing.seller.name}
-                className="w-4 h-4 sm:w-5 sm:h-5 rounded-full object-cover border border-slate-300 dark:border-slate-700 shrink-0"
-              />
-              <span className="text-slate-700 dark:text-slate-300 font-medium truncate max-w-[85px] sm:max-w-[120px]">
+              <div className="relative shrink-0">
+                <img
+                  src={listing.seller.avatar}
+                  alt={listing.seller.name}
+                  className={`w-4 h-4 sm:w-5 sm:h-5 rounded-full object-cover border ${
+                    isPro
+                      ? 'border-amber-400 ring-1 ring-amber-400/50'
+                      : 'border-slate-300 dark:border-slate-700'
+                  }`}
+                />
+                {isPro && (
+                  <Crown className="w-2.5 h-2.5 absolute -top-1 -right-1 text-amber-500 fill-amber-400" />
+                )}
+              </div>
+              <span className="text-slate-700 dark:text-slate-300 font-medium truncate max-w-[80px] sm:max-w-[110px]">
                 {listing.seller.name}
               </span>
-              {listing.isVerifiedSeller && (
+              {isPro ? (
+                <span
+                  title="PRO MERCHANT"
+                  className="px-1 py-0.2 rounded bg-amber-500/15 border border-amber-500/30 text-amber-600 dark:text-amber-400 text-[9px] font-black font-mono shrink-0 flex items-center gap-0.5"
+                >
+                  <Crown className="w-2.5 h-2.5 fill-amber-400" />
+                  <span>PRO</span>
+                </span>
+              ) : listing.isVerifiedSeller ? (
                 <span title={t('card.verifiedSeller')}>
                   <CheckCircle className="w-3 h-3 text-cyan-500 shrink-0" />
                 </span>
-              )}
+              ) : null}
             </div>
 
             <div className="flex items-center gap-0.5 sm:gap-1 text-amber-500 font-bold text-[10px] sm:text-[11px] shrink-0 font-mono">
