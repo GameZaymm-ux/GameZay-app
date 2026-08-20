@@ -18,11 +18,17 @@ import {
   Check,
   AlertOctagon,
   Eye,
+  EyeOff,
   Copy,
   ExternalLink,
   MessageSquare,
   ShieldAlert,
   Coins,
+  History,
+  Shield,
+  Activity,
+  FileText,
+  HelpCircle,
 } from 'lucide-react';
 import { ThreePartyLiveChat } from './ThreePartyLiveChat';
 import confetti from 'canvas-confetti';
@@ -47,6 +53,8 @@ interface SellerEscrowRoomProps {
   onGoToWallet?: () => void;
 }
 
+export type SellerRoomSubTab = 'status_action' | 'live_chat' | 'credentials';
+
 export const SellerEscrowRoom: React.FC<SellerEscrowRoomProps> = ({
   order,
   onBack,
@@ -56,6 +64,24 @@ export const SellerEscrowRoom: React.FC<SellerEscrowRoomProps> = ({
   onGoToWallet,
 }) => {
   const { t, formatMMK, formatTHB, convertMMKtoTHB, isMM } = useLanguage();
+
+  // Active Inner Sub-Tab State
+  const [activeSubTab, setActiveSubTab] = useState<SellerRoomSubTab>('status_action');
+
+  // Track chat messages count to compute unread / new message badges
+  const [lastReadChatCount, setLastReadChatCount] = useState<number>(
+    order.chatMessages?.length || 0
+  );
+
+  const currentMessageCount = order.chatMessages?.length || 0;
+  const unreadMessagesCount = Math.max(0, currentMessageCount - lastReadChatCount);
+
+  const handleTabChange = (tab: SellerRoomSubTab) => {
+    setActiveSubTab(tab);
+    if (tab === 'live_chat') {
+      setLastReadChatCount(currentMessageCount);
+    }
+  };
 
   // Credentials Submission Form State
   const [loginId, setLoginId] = useState(
@@ -74,11 +100,14 @@ export const SellerEscrowRoom: React.FC<SellerEscrowRoomProps> = ({
     order.credentials?.transferNotes || order.listing?.credentialPreview?.notes || 'Clean account. Please change password and link your phone.'
   );
 
+  // Password visibility & Copy state for Credentials Tab
+  const [showPassword, setShowPassword] = useState(false);
+  const [copiedKey, setCopiedKey] = useState<string | null>(null);
+
   // Dispute Modal State
   const [isDisputeModalOpen, setIsDisputeModalOpen] = useState(false);
   const [disputeReason, setDisputeReason] = useState('Buyer Unresponsive / Stalling');
   const [disputeDetails, setDisputeDetails] = useState('');
-  const [isCopied, setIsCopied] = useState(false);
 
   // Simulated 24-hour countdown state for inspection period
   const [timeLeft, setTimeLeft] = useState<{ hours: number; minutes: number; seconds: number }>({
@@ -109,6 +138,12 @@ export const SellerEscrowRoom: React.FC<SellerEscrowRoomProps> = ({
     }
   }, [order.status]);
 
+  const handleCopy = (text: string, key: string) => {
+    navigator.clipboard.writeText(text);
+    setCopiedKey(key);
+    setTimeout(() => setCopiedKey(null), 2000);
+  };
+
   const handleDeliverSubmit = (e: React.FormEvent) => {
     e.preventDefault();
     if (!loginId.trim() || !password.trim()) {
@@ -125,7 +160,7 @@ export const SellerEscrowRoom: React.FC<SellerEscrowRoomProps> = ({
     });
 
     confetti({
-      particleCount: 70,
+      particleCount: 75,
       spread: 70,
       origin: { y: 0.6 },
     });
@@ -143,85 +178,192 @@ export const SellerEscrowRoom: React.FC<SellerEscrowRoomProps> = ({
     setDisputeDetails('');
   };
 
-  return (
-    <div className="space-y-6 animate-in fade-in duration-200">
-      {/* Top Header & Navigation Bar */}
-      <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4 bg-white dark:bg-slate-900 p-4 sm:p-5 rounded-3xl border border-slate-200 dark:border-slate-800 shadow-sm">
-        <div className="flex items-center gap-3">
-          <button
-            onClick={onBack}
-            className="p-2.5 rounded-2xl bg-slate-100 dark:bg-slate-800 hover:bg-slate-200 dark:hover:bg-slate-700 text-slate-700 dark:text-slate-200 transition cursor-pointer flex items-center gap-1 text-xs font-bold"
-            title={t('sellerStudio.escrowRoom.backToSales')}
-          >
-            <ArrowLeft className="w-4 h-4" />
-            <span className="hidden sm:inline">{t('sellerStudio.escrowRoom.backToSales')}</span>
-          </button>
+  const isInspectionActive = [
+    'CREDENTIALS_DISPATCHED',
+    'CREDENTIALS_DELIVERED',
+    'INSPECTION_PERIOD',
+  ].includes(order.status);
 
-          <div>
-            <div className="flex items-center gap-2">
-              <span className="text-[10px] font-black uppercase px-2.5 py-0.5 rounded-full bg-emerald-500/10 text-emerald-600 dark:text-emerald-400 border border-emerald-500/20">
-                {order.listing?.gameType || 'GAMING'}
-              </span>
-              <span className="text-xs font-mono font-bold text-slate-400">
-                #{order.orderNumber}
-              </span>
+  return (
+    <div className="space-y-5 animate-in fade-in duration-200">
+      {/* ======================================================== */}
+      {/* 1. COMPACT STICKY TOP BAR HEADER                         */}
+      {/* ======================================================== */}
+      <div className="bg-white dark:bg-slate-900 border border-slate-200 dark:border-slate-800 rounded-3xl p-4 sm:p-5 shadow-sm space-y-3">
+        <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-3">
+          {/* Left: Back button + Listing info */}
+          <div className="flex items-center gap-3 min-w-0">
+            <button
+              onClick={onBack}
+              className="p-2.5 rounded-2xl bg-slate-100 dark:bg-slate-800 hover:bg-slate-200 dark:hover:bg-slate-700 text-slate-700 dark:text-slate-200 transition cursor-pointer flex items-center gap-1.5 text-xs font-bold shrink-0"
+              title={t('sellerStudio.escrowRoom.backToSales')}
+            >
+              <ArrowLeft className="w-4 h-4" />
+              <span className="hidden sm:inline">{t('sellerStudio.escrowRoom.backToSales')}</span>
+            </button>
+
+            <img
+              src={
+                order.listing?.imageUrls?.[0] ||
+                'https://images.unsplash.com/photo-1542751371-adc38448a05e?w=800&auto=format&fit=crop&q=80'
+              }
+              alt={order.listing?.title}
+              className="w-11 h-11 sm:w-12 sm:h-12 rounded-2xl object-cover border border-slate-200 dark:border-slate-800 shrink-0"
+            />
+
+            <div className="min-w-0">
+              <div className="flex items-center gap-2 flex-wrap">
+                <span className="text-[10px] font-black uppercase px-2.5 py-0.5 rounded-full bg-emerald-500/10 text-emerald-600 dark:text-emerald-400 border border-emerald-500/20">
+                  {order.listing?.gameType || 'GAMING'}
+                </span>
+                <span className="text-xs font-mono font-bold text-slate-400">
+                  #{order.orderNumber}
+                </span>
+                <span className="text-[11px] text-slate-500 dark:text-slate-400 hidden md:inline-flex items-center gap-1">
+                  <User className="w-3 h-3 text-emerald-500" />
+                  <span>Buyer: <strong className="text-slate-800 dark:text-slate-200">{order.buyerName}</strong></span>
+                </span>
+              </div>
+              <h2 className="text-sm sm:text-base font-black text-slate-900 dark:text-white truncate">
+                {order.listing?.title}
+              </h2>
             </div>
-            <h2 className="text-base sm:text-lg font-black text-slate-900 dark:text-white line-clamp-1">
-              {order.listing?.title}
-            </h2>
+          </div>
+
+          {/* Right: Escrow Amount & Status Badge */}
+          <div className="flex items-center justify-between sm:justify-end gap-3 shrink-0 pt-2 sm:pt-0 border-t sm:border-t-0 border-slate-100 dark:border-slate-800">
+            <div className="text-left sm:text-right">
+              <div className="text-[10px] text-slate-400 font-bold uppercase tracking-wider">
+                {t('sellerStudio.escrowRoom.escrowAmount')}
+              </div>
+              <div className="text-base sm:text-lg font-black font-mono text-emerald-500">
+                {formatMMK(order.amountMMK)}
+              </div>
+              <div className="text-[10px] font-mono text-slate-400">
+                ≈ {formatTHB(convertMMKtoTHB(order.amountMMK))}
+              </div>
+            </div>
+
+            <div className="flex flex-col items-end gap-1">
+              <span
+                className={`px-3 py-1 rounded-2xl text-xs font-black tracking-wide border shadow-sm flex items-center gap-1.5 ${
+                  order.status === 'COMPLETED'
+                    ? 'bg-emerald-500/10 text-emerald-500 border-emerald-500/30'
+                    : order.status === 'DISPUTED'
+                    ? 'bg-rose-500/10 text-rose-500 border-rose-500/30'
+                    : order.status === 'ESCROW_LOCKED'
+                    ? 'bg-amber-500/10 text-amber-500 border-amber-500/30 animate-pulse'
+                    : 'bg-cyan-500/10 text-cyan-500 border-cyan-500/30'
+                }`}
+              >
+                <span className={`w-1.5 h-1.5 rounded-full ${
+                  order.status === 'COMPLETED' ? 'bg-emerald-500' :
+                  order.status === 'DISPUTED' ? 'bg-rose-500' : 'bg-amber-400 animate-ping'
+                }`} />
+                <span>{order.status}</span>
+              </span>
+
+              {isInspectionActive && (
+                <div className="flex items-center gap-1 font-mono text-[10px] text-cyan-600 dark:text-cyan-400 font-bold bg-cyan-500/10 px-2 py-0.5 rounded-lg border border-cyan-500/20">
+                  <Clock className="w-3 h-3" />
+                  <span>
+                    {String(timeLeft.hours).padStart(2, '0')}:
+                    {String(timeLeft.minutes).padStart(2, '0')}:
+                    {String(timeLeft.seconds).padStart(2, '0')}
+                  </span>
+                </div>
+              )}
+            </div>
           </div>
         </div>
 
-        {/* Amount & Status Badge */}
-        <div className="flex items-center gap-3 self-end sm:self-center">
-          <div className="text-right">
-            <div className="text-xs text-slate-400 font-bold uppercase tracking-wider">
-              {t('sellerStudio.escrowRoom.escrowAmount')}
-            </div>
-            <div className="text-base sm:text-lg font-black font-mono text-emerald-500">
-              {formatMMK(order.amountMMK)}
-            </div>
-            <div className="text-[10px] font-mono text-slate-400">
-              ≈ {formatTHB(convertMMKtoTHB(order.amountMMK))}
-            </div>
-          </div>
-
-          <span
-            className={`px-3 py-1.5 rounded-2xl text-xs font-black tracking-wide border shadow-sm ${
-              order.status === 'COMPLETED'
-                ? 'bg-emerald-500/10 text-emerald-500 border-emerald-500/30'
-                : order.status === 'DISPUTED'
-                ? 'bg-rose-500/10 text-rose-500 border-rose-500/30'
-                : 'bg-amber-500/10 text-amber-500 border-amber-500/30 animate-pulse'
+        {/* ======================================================== */}
+        {/* 2. INNER SUB-TAB NAVIGATION (3 TABS)                     */}
+        {/* ======================================================== */}
+        <div className="flex items-center gap-2 pt-2 border-t border-slate-100 dark:border-slate-800 overflow-x-auto no-scrollbar">
+          {/* Sub-Tab 1: Status & Action */}
+          <button
+            onClick={() => handleTabChange('status_action')}
+            className={`flex-1 min-w-[140px] flex items-center justify-center gap-2 py-2.5 px-3 rounded-2xl text-xs font-bold transition cursor-pointer ${
+              activeSubTab === 'status_action'
+                ? 'bg-emerald-500 text-slate-950 shadow-md font-black shadow-emerald-500/20'
+                : 'bg-slate-100 dark:bg-slate-800 text-slate-600 dark:text-slate-400 hover:text-slate-900 dark:hover:text-white'
             }`}
           >
-            {order.status}
-          </span>
+            <ShieldCheck className="w-4 h-4" />
+            <span>{t('sellerStudio.escrowRoom.subTabs.statusAction')}</span>
+            {order.status === 'ESCROW_LOCKED' && (
+              <span className="w-2 h-2 rounded-full bg-amber-400 animate-ping" />
+            )}
+          </button>
+
+          {/* Sub-Tab 2: Live Chat with Unread Badge */}
+          <button
+            onClick={() => handleTabChange('live_chat')}
+            className={`flex-1 min-w-[140px] flex items-center justify-center gap-2 py-2.5 px-3 rounded-2xl text-xs font-bold transition cursor-pointer relative ${
+              activeSubTab === 'live_chat'
+                ? 'bg-emerald-500 text-slate-950 shadow-md font-black shadow-emerald-500/20'
+                : 'bg-slate-100 dark:bg-slate-800 text-slate-600 dark:text-slate-400 hover:text-slate-900 dark:hover:text-white'
+            }`}
+          >
+            <MessageSquare className="w-4 h-4" />
+            <span>{t('sellerStudio.escrowRoom.subTabs.liveChat')}</span>
+            {currentMessageCount > 0 && (
+              <span
+                className={`px-2 py-0.5 rounded-full text-[10px] font-mono font-bold ${
+                  activeSubTab === 'live_chat'
+                    ? 'bg-slate-950 text-emerald-400'
+                    : 'bg-emerald-500 text-slate-950'
+                }`}
+              >
+                {currentMessageCount}
+              </span>
+            )}
+            {unreadMessagesCount > 0 && activeSubTab !== 'live_chat' && (
+              <span className="absolute -top-1 -right-1 flex h-3 w-3">
+                <span className="animate-ping absolute inline-flex h-full w-full rounded-full bg-rose-400 opacity-75"></span>
+                <span className="relative inline-flex rounded-full h-3 w-3 bg-rose-500"></span>
+              </span>
+            )}
+          </button>
+
+          {/* Sub-Tab 3: Credentials & Vault */}
+          <button
+            onClick={() => handleTabChange('credentials')}
+            className={`flex-1 min-w-[140px] flex items-center justify-center gap-2 py-2.5 px-3 rounded-2xl text-xs font-bold transition cursor-pointer ${
+              activeSubTab === 'credentials'
+                ? 'bg-emerald-500 text-slate-950 shadow-md font-black shadow-emerald-500/20'
+                : 'bg-slate-100 dark:bg-slate-800 text-slate-600 dark:text-slate-400 hover:text-slate-900 dark:hover:text-white'
+            }`}
+          >
+            <Key className="w-4 h-4" />
+            <span>{t('sellerStudio.escrowRoom.subTabs.credentials')}</span>
+            {order.credentials && (
+              <span className="px-1.5 py-0.2 rounded-md bg-emerald-500/20 text-emerald-600 dark:text-emerald-400 text-[10px] font-bold">
+                ✓
+              </span>
+            )}
+          </button>
         </div>
       </div>
 
-      {/* Grid: Left (Action Box & Buyer Card) | Right (3-Party Live Chat) */}
-      <div className="grid grid-cols-1 lg:grid-cols-12 gap-6 items-start">
-        {/* Left Column (7 cols): Seller Perspective Action Box & Details */}
-        <div className="lg:col-span-7 space-y-6">
-          {/* 1. Dynamic Seller Perspective Action Box */}
-          <div className="bg-white dark:bg-slate-900 rounded-3xl p-5 sm:p-6 border border-slate-200 dark:border-slate-800 shadow-xl space-y-5">
-            <div className="flex items-center justify-between pb-3 border-b border-slate-100 dark:border-slate-800">
-              <div className="flex items-center gap-2.5">
-                <div className="p-2.5 rounded-2xl bg-emerald-500/10 text-emerald-500">
-                  <ShieldCheck className="w-5 h-5" />
-                </div>
-                <div>
-                  <h3 className="text-sm font-black text-slate-900 dark:text-white">
-                    {t('sellerStudio.escrowRoom.actionBoxTitle')}
-                  </h3>
-                  <p className="text-[11px] text-slate-500 dark:text-slate-400">
-                    Seller Escrow Workflow & Credentials Dispatch
-                  </p>
-                </div>
-              </div>
+      {/* ======================================================== */}
+      {/* 3. SUB-TAB CONTENT CONTAINERS                             */}
+      {/* ======================================================== */}
 
-              {/* Dispute Trigger Button */}
+      {/* -------------------------------------------------------- */}
+      {/* SUB-TAB 1: STATUS & ACTION                               */}
+      {/* -------------------------------------------------------- */}
+      {activeSubTab === 'status_action' && (
+        <div className="space-y-6 animate-in fade-in duration-200">
+          {/* Top Milestones Timeline */}
+          <div className="bg-white dark:bg-slate-900 rounded-3xl p-5 sm:p-6 border border-slate-200 dark:border-slate-800 shadow-sm space-y-4">
+            <div className="flex items-center justify-between">
+              <h3 className="text-xs font-black uppercase tracking-wider text-slate-400 flex items-center gap-2">
+                <Activity className="w-4 h-4 text-emerald-500" />
+                <span>Deal Milestones & Escrow Timeline</span>
+              </h3>
+
               {order.status !== 'COMPLETED' && order.status !== 'REFUNDED' && (
                 <button
                   onClick={() => setIsDisputeModalOpen(true)}
@@ -231,6 +373,78 @@ export const SellerEscrowRoom: React.FC<SellerEscrowRoomProps> = ({
                   <span>{t('sellerStudio.escrowRoom.raiseDisputeBtn')}</span>
                 </button>
               )}
+            </div>
+
+            {/* Step Progress Pills */}
+            <div className="grid grid-cols-2 md:grid-cols-4 gap-3 text-xs">
+              {[
+                {
+                  step: '1. Payment Locked',
+                  desc: 'Buyer slip audited in vault',
+                  done: true,
+                  active: order.status === 'PAYMENT_VERIFYING',
+                },
+                {
+                  step: '2. Handover Credentials',
+                  desc: 'Seller delivers login info',
+                  done: ['CREDENTIALS_DISPATCHED', 'CREDENTIALS_DELIVERED', 'INSPECTION_PERIOD', 'COMPLETED'].includes(order.status),
+                  active: order.status === 'ESCROW_LOCKED',
+                },
+                {
+                  step: '3. 24h Buyer Inspection',
+                  desc: 'In-game specs verification',
+                  done: order.status === 'COMPLETED',
+                  active: isInspectionActive,
+                },
+                {
+                  step: '4. Payout Released',
+                  desc: 'Credited to seller wallet',
+                  done: order.status === 'COMPLETED',
+                  active: order.status === 'COMPLETED',
+                },
+              ].map((m, idx) => (
+                <div
+                  key={idx}
+                  className={`p-3 rounded-2xl border transition ${
+                    m.done
+                      ? 'bg-emerald-500/10 border-emerald-500/30 text-slate-900 dark:text-white'
+                      : m.active
+                      ? 'bg-amber-500/10 border-amber-500/40 text-slate-900 dark:text-white shadow-sm'
+                      : 'bg-slate-50 dark:bg-slate-950/60 border-slate-200 dark:border-slate-800 text-slate-400'
+                  }`}
+                >
+                  <div className="flex items-center gap-1.5 mb-1">
+                    {m.done ? (
+                      <CheckCircle2 className="w-4 h-4 text-emerald-500 shrink-0" />
+                    ) : m.active ? (
+                      <Clock className="w-4 h-4 text-amber-500 shrink-0 animate-spin" />
+                    ) : (
+                      <div className="w-3.5 h-3.5 rounded-full border border-slate-400/50" />
+                    )}
+                    <span className="font-bold text-[11px]">{m.step}</span>
+                  </div>
+                  <p className="text-[10px] text-slate-500 dark:text-slate-400 leading-tight">
+                    {m.desc}
+                  </p>
+                </div>
+              ))}
+            </div>
+          </div>
+
+          {/* Action Box Container */}
+          <div className="bg-white dark:bg-slate-900 rounded-3xl p-5 sm:p-6 border border-slate-200 dark:border-slate-800 shadow-xl space-y-5">
+            <div className="flex items-center gap-2.5 pb-3 border-b border-slate-100 dark:border-slate-800">
+              <div className="p-2.5 rounded-2xl bg-emerald-500/10 text-emerald-500">
+                <ShieldCheck className="w-5 h-5" />
+              </div>
+              <div>
+                <h3 className="text-sm font-black text-slate-900 dark:text-white">
+                  {t('sellerStudio.escrowRoom.actionBoxTitle')}
+                </h3>
+                <p className="text-[11px] text-slate-500 dark:text-slate-400">
+                  Seller Escrow Actions & Next Steps
+                </p>
+              </div>
             </div>
 
             {/* STAGE 1: Payment Verifying */}
@@ -254,7 +468,7 @@ export const SellerEscrowRoom: React.FC<SellerEscrowRoomProps> = ({
                     <span>Next step: GameZay Admin verifies payment slip</span>
                   </div>
                   <p className="text-[10px] text-slate-500 dark:text-slate-400">
-                    Once payment verification completes, the credentials form below will be unlocked for immediate delivery.
+                    Once payment verification completes, the credentials form below will unlock for immediate handover.
                   </p>
                 </div>
               </div>
@@ -366,9 +580,7 @@ export const SellerEscrowRoom: React.FC<SellerEscrowRoomProps> = ({
             )}
 
             {/* STAGE 3: Credentials Delivered / Inspection Period (24h Window) */}
-            {(order.status === 'CREDENTIALS_DISPATCHED' ||
-              order.status === 'CREDENTIALS_DELIVERED' ||
-              order.status === 'INSPECTION_PERIOD') && (
+            {isInspectionActive && (
               <div className="p-5 rounded-2xl bg-gradient-to-br from-cyan-500/10 via-slate-50 to-emerald-500/10 dark:from-cyan-950/40 dark:via-slate-950 dark:to-emerald-950/40 border border-cyan-500/30 space-y-4 animate-in fade-in">
                 <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-3">
                   <div className="flex items-center gap-2.5">
@@ -403,22 +615,23 @@ export const SellerEscrowRoom: React.FC<SellerEscrowRoomProps> = ({
                   {t('sellerStudio.escrowRoom.stageInspectionDesc')}
                 </p>
 
-                {/* Delivered Credentials Summary */}
-                {order.credentials && (
-                  <div className="p-3.5 rounded-xl bg-white dark:bg-slate-900 border border-slate-200 dark:border-slate-800 text-xs space-y-2">
-                    <div className="text-[11px] font-bold text-slate-500 uppercase tracking-wider">
-                      Delivered Credentials Summary (Encrypted in Escrow Vault)
-                    </div>
-                    <div className="grid grid-cols-2 gap-2 text-slate-700 dark:text-slate-300 font-mono">
-                      <div>
-                        <span className="text-slate-400 font-normal">Login ID:</span> {order.credentials.loginId}
-                      </div>
-                      <div>
-                        <span className="text-slate-400 font-normal">Password:</span> ••••••••
-                      </div>
-                    </div>
-                  </div>
-                )}
+                <div className="pt-2 flex items-center justify-between border-t border-cyan-500/20">
+                  <button
+                    onClick={() => setActiveSubTab('credentials')}
+                    className="text-xs font-bold text-cyan-600 dark:text-cyan-400 hover:underline flex items-center gap-1"
+                  >
+                    <span>View Delivered Vault Record</span>
+                    <Key className="w-3.5 h-3.5" />
+                  </button>
+
+                  <button
+                    onClick={() => setActiveSubTab('live_chat')}
+                    className="text-xs font-bold text-emerald-600 dark:text-emerald-400 hover:underline flex items-center gap-1"
+                  >
+                    <span>Chat with Buyer & Arbiter</span>
+                    <MessageSquare className="w-3.5 h-3.5" />
+                  </button>
+                </div>
               </div>
             )}
 
@@ -480,11 +693,18 @@ export const SellerEscrowRoom: React.FC<SellerEscrowRoomProps> = ({
                     </div>
                   </div>
                 )}
+
+                <button
+                  onClick={() => setActiveSubTab('live_chat')}
+                  className="px-4 py-2 rounded-xl bg-rose-600 hover:bg-rose-500 text-white font-bold text-xs transition"
+                >
+                  Join 3-Party Dispute Resolution Chat
+                </button>
               </div>
             )}
           </div>
 
-          {/* 2. Buyer Profile & Order Snapshot Card */}
+          {/* Buyer Profile & Order Snapshot Card */}
           <div className="bg-white dark:bg-slate-900 rounded-3xl p-5 border border-slate-200 dark:border-slate-800 shadow-sm space-y-3">
             <h4 className="text-xs font-black text-slate-900 dark:text-white uppercase tracking-wider flex items-center gap-2">
               <User className="w-4 h-4 text-emerald-500" />
@@ -511,9 +731,13 @@ export const SellerEscrowRoom: React.FC<SellerEscrowRoomProps> = ({
             </div>
           </div>
         </div>
+      )}
 
-        {/* Right Column (5 cols): Embedded 3-Party Live Chat */}
-        <div className="lg:col-span-5 h-[650px] sticky top-24">
+      {/* -------------------------------------------------------- */}
+      {/* SUB-TAB 2: LIVE CHAT (DEDICATED 3-PARTY CHAT)            */}
+      {/* -------------------------------------------------------- */}
+      {activeSubTab === 'live_chat' && (
+        <div className="bg-white dark:bg-slate-900 border border-slate-200 dark:border-slate-800 rounded-3xl overflow-hidden shadow-xl min-h-[580px] animate-in fade-in duration-200">
           <ThreePartyLiveChat
             order={order}
             currentRole="SELLER"
@@ -521,9 +745,189 @@ export const SellerEscrowRoom: React.FC<SellerEscrowRoomProps> = ({
             onSendMessage={onSendMessage}
           />
         </div>
-      </div>
+      )}
 
-      {/* Seller Dispute Modal */}
+      {/* -------------------------------------------------------- */}
+      {/* SUB-TAB 3: CREDENTIALS & SECURE VAULT RECORD             */}
+      {/* -------------------------------------------------------- */}
+      {activeSubTab === 'credentials' && (
+        <div className="space-y-6 animate-in fade-in duration-200">
+          {/* Encrypted Vault Card */}
+          <div className="bg-white dark:bg-slate-900 border border-slate-200 dark:border-slate-800 rounded-3xl p-5 sm:p-6 shadow-xl space-y-6">
+            <div className="flex items-center justify-between border-b border-slate-100 dark:border-slate-800 pb-4">
+              <div className="flex items-center gap-3">
+                <div className="p-2.5 rounded-2xl bg-emerald-500/10 text-emerald-500">
+                  <Lock className="w-5 h-5" />
+                </div>
+                <div>
+                  <h3 className="text-sm sm:text-base font-black text-slate-900 dark:text-white">
+                    {t('sellerStudio.escrowRoom.credentialsVault.vaultTitle')}
+                  </h3>
+                  <p className="text-xs text-slate-500 dark:text-slate-400">
+                    {t('sellerStudio.escrowRoom.credentialsVault.vaultSubtitle')}
+                  </p>
+                </div>
+              </div>
+
+              <span className="px-3 py-1 rounded-xl bg-emerald-500/10 text-emerald-600 dark:text-emerald-400 border border-emerald-500/30 text-xs font-mono font-bold">
+                {order.credentials?.authType || order.listing?.credentialPreview?.authType || 'PROTECTED'}
+              </span>
+            </div>
+
+            {order.credentials ? (
+              <div className="space-y-4">
+                {/* Login ID */}
+                <div className="bg-slate-50 dark:bg-slate-950 p-4 rounded-2xl border border-slate-200 dark:border-slate-800 flex items-center justify-between">
+                  <div>
+                    <label className="text-[11px] font-bold uppercase tracking-wider text-slate-500 block mb-1">
+                      {t('sellerStudio.escrowRoom.loginIdLabel')}
+                    </label>
+                    <span className="text-xs sm:text-sm font-mono font-bold text-slate-900 dark:text-white select-all">
+                      {order.credentials.loginId}
+                    </span>
+                  </div>
+                  <button
+                    onClick={() => handleCopy(order.credentials!.loginId, 'login')}
+                    className="px-3 py-1.5 rounded-xl bg-white dark:bg-slate-800 text-slate-700 dark:text-slate-200 hover:bg-emerald-500 hover:text-slate-950 text-xs font-bold transition flex items-center gap-1.5 border border-slate-200 dark:border-slate-700 cursor-pointer"
+                  >
+                    {copiedKey === 'login' ? <Check className="w-3.5 h-3.5 text-emerald-500" /> : <Copy className="w-3.5 h-3.5" />}
+                    <span>{copiedKey === 'login' ? t('orders.copied') : t('orders.copy')}</span>
+                  </button>
+                </div>
+
+                {/* Password */}
+                <div className="bg-slate-50 dark:bg-slate-950 p-4 rounded-2xl border border-slate-200 dark:border-slate-800 flex items-center justify-between">
+                  <div>
+                    <label className="text-[11px] font-bold uppercase tracking-wider text-slate-500 block mb-1">
+                      {t('sellerStudio.escrowRoom.passwordLabel')}
+                    </label>
+                    <span className="text-xs sm:text-sm font-mono font-bold text-slate-900 dark:text-white select-all">
+                      {showPassword ? order.credentials.password : '••••••••••••••••'}
+                    </span>
+                  </div>
+                  <div className="flex items-center gap-2">
+                    <button
+                      onClick={() => setShowPassword(!showPassword)}
+                      className="p-2 rounded-xl bg-white dark:bg-slate-800 text-slate-500 hover:text-slate-900 dark:hover:text-white transition border border-slate-200 dark:border-slate-700 cursor-pointer"
+                      title={showPassword ? t('orders.hide') : t('orders.reveal')}
+                    >
+                      {showPassword ? <EyeOff className="w-4 h-4" /> : <Eye className="w-4 h-4" />}
+                    </button>
+                    <button
+                      onClick={() => handleCopy(order.credentials!.password, 'pass')}
+                      className="px-3 py-1.5 rounded-xl bg-white dark:bg-slate-800 text-slate-700 dark:text-slate-200 hover:bg-emerald-500 hover:text-slate-950 text-xs font-bold transition flex items-center gap-1.5 border border-slate-200 dark:border-slate-700 cursor-pointer"
+                    >
+                      {copiedKey === 'pass' ? <Check className="w-3.5 h-3.5 text-emerald-500" /> : <Copy className="w-3.5 h-3.5" />}
+                      <span>{copiedKey === 'pass' ? t('orders.copied') : t('orders.copy')}</span>
+                    </button>
+                  </div>
+                </div>
+
+                {/* Backup Codes / 2FA */}
+                {order.credentials.backupCodes && (
+                  <div className="bg-slate-50 dark:bg-slate-950 p-4 rounded-2xl border border-slate-200 dark:border-slate-800 flex items-center justify-between">
+                    <div>
+                      <label className="text-[11px] font-bold uppercase tracking-wider text-slate-500 block mb-1">
+                        {t('sellerStudio.escrowRoom.backupCodesLabel')}
+                      </label>
+                      <span className="text-xs font-mono font-bold text-slate-900 dark:text-white select-all">
+                        {order.credentials.backupCodes}
+                      </span>
+                    </div>
+                    <button
+                      onClick={() => handleCopy(order.credentials!.backupCodes!, 'codes')}
+                      className="px-3 py-1.5 rounded-xl bg-white dark:bg-slate-800 text-slate-700 dark:text-slate-200 hover:bg-emerald-500 hover:text-slate-950 text-xs font-bold transition flex items-center gap-1.5 border border-slate-200 dark:border-slate-700 cursor-pointer"
+                    >
+                      {copiedKey === 'codes' ? <Check className="w-3.5 h-3.5 text-emerald-500" /> : <Copy className="w-3.5 h-3.5" />}
+                      <span>{copiedKey === 'codes' ? t('orders.copied') : t('orders.copy')}</span>
+                    </button>
+                  </div>
+                )}
+
+                {/* Transfer Notes */}
+                {order.credentials.transferNotes && (
+                  <div className="bg-amber-500/10 border border-amber-500/20 p-4 rounded-2xl space-y-1">
+                    <span className="text-[11px] font-bold text-amber-500 uppercase tracking-wider flex items-center gap-1">
+                      <Sparkles className="w-3.5 h-3.5" />
+                      <span>{t('sellerStudio.escrowRoom.transferNotesLabel')}</span>
+                    </span>
+                    <p className="text-xs text-slate-700 dark:text-slate-300 leading-relaxed">
+                      {order.credentials.transferNotes}
+                    </p>
+                  </div>
+                )}
+              </div>
+            ) : (
+              <div className="p-8 text-center bg-slate-50 dark:bg-slate-950 rounded-2xl border border-slate-200 dark:border-slate-800 space-y-3">
+                <Key className="w-10 h-10 text-amber-400 mx-auto animate-pulse" />
+                <h4 className="text-xs font-bold text-slate-900 dark:text-white">
+                  {t('sellerStudio.escrowRoom.credentialsVault.notDeliveredYet')}
+                </h4>
+                <p className="text-[11px] text-slate-500 max-w-md mx-auto">
+                  {t('sellerStudio.escrowRoom.credentialsVault.notDeliveredDesc')}
+                </p>
+                {order.status === 'ESCROW_LOCKED' && (
+                  <button
+                    onClick={() => setActiveSubTab('status_action')}
+                    className="px-4 py-2 rounded-xl bg-emerald-500 text-slate-950 font-bold text-xs shadow-md transition"
+                  >
+                    Go to Status & Action to Deliver
+                  </button>
+                )}
+              </div>
+            )}
+          </div>
+
+          {/* Time Tracker & Access Audit Logs */}
+          <div className="bg-white dark:bg-slate-900 border border-slate-200 dark:border-slate-800 rounded-3xl p-5 sm:p-6 shadow-sm space-y-4">
+            <h4 className="text-xs font-black uppercase tracking-wider text-slate-400 flex items-center gap-2">
+              <History className="w-4 h-4 text-emerald-500" />
+              <span>{t('sellerStudio.escrowRoom.credentialsVault.accessLogs')}</span>
+            </h4>
+
+            <div className="space-y-3 relative pl-6 border-l-2 border-slate-200 dark:border-slate-800 text-xs">
+              <div className="relative">
+                <div className="w-3 h-3 rounded-full bg-emerald-500 absolute -left-[31px] top-1" />
+                <div className="font-bold text-slate-900 dark:text-white">
+                  {t('sellerStudio.escrowRoom.credentialsVault.orderCreatedLog')}
+                </div>
+                <div className="text-[11px] text-slate-400 font-mono">
+                  {new Date(order.createdAt).toLocaleString()}
+                </div>
+              </div>
+
+              {order.status !== 'PENDING_PAYMENT_PROOF' && order.status !== 'PAYMENT_VERIFYING' && (
+                <div className="relative">
+                  <div className="w-3 h-3 rounded-full bg-emerald-500 absolute -left-[31px] top-1" />
+                  <div className="font-bold text-slate-900 dark:text-white">
+                    {t('sellerStudio.escrowRoom.credentialsVault.dispatchedLog')}
+                  </div>
+                  <div className="text-[11px] text-slate-400 font-mono">
+                    Escrow Vault Verified & Sealed
+                  </div>
+                </div>
+              )}
+
+              {isInspectionActive && (
+                <div className="relative">
+                  <div className="w-3 h-3 rounded-full bg-cyan-500 absolute -left-[31px] top-1 animate-ping" />
+                  <div className="font-bold text-slate-900 dark:text-white flex items-center gap-1.5">
+                    <Eye className="w-3.5 h-3.5 text-cyan-500" />
+                    <span>{t('sellerStudio.escrowRoom.credentialsVault.viewedLog')}</span>
+                  </div>
+                  <div className="text-[11px] text-slate-400 font-mono">
+                    Buyer decrypted credentials • 24h timer started
+                  </div>
+                </div>
+              )}
+            </div>
+          </div>
+        </div>
+      )}
+
+      {/* ======================================================== */}
+      {/* 4. SELLER DISPUTE MODAL                                  */}
+      {/* ======================================================== */}
       {isDisputeModalOpen && (
         <div className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-slate-950/80 backdrop-blur-sm animate-in fade-in duration-200">
           <div className="w-full max-w-lg bg-white dark:bg-slate-900 border border-slate-200 dark:border-slate-800 rounded-3xl p-6 shadow-2xl space-y-5">

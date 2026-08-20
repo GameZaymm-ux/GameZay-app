@@ -436,7 +436,29 @@
       "chatRoomTitle": "Live 3-Party Deal Room Chat",
       "chatSellerBadge": "You (Seller)",
       "chatBuyerBadge": "Buyer",
-      "chatAdminBadge": "Escrow Arbiter"
+      "chatAdminBadge": "Escrow Arbiter",
+      "subTabs": {
+        "statusAction": "Status & Action",
+        "liveChat": "Live Chat",
+        "credentials": "Credentials",
+        "statusActionDesc": "Deal timeline, inspection & required actions",
+        "liveChatDesc": "3-party real-time chat with arbiter",
+        "credentialsDesc": "Secure login details, 2FA & audit log"
+      },
+      "credentialsVault": {
+        "vaultTitle": "Secure Escrow Encrypted Vault",
+        "vaultSubtitle": "End-to-end protected credential handover",
+        "accessLogs": "Credentials Access & Audit Log",
+        "viewedLog": "Buyer opened and verified decrypted credentials",
+        "dispatchedLog": "Seller encrypted credentials into Escrow Vault",
+        "orderCreatedLog": "Escrow order created & transaction initialized",
+        "securityChecklist": "Security Recommendations",
+        "stepChangePass": "1. Change the account password immediately upon logging in",
+        "stepBindPhone": "2. Link your own phone number, 2FA, or recovery email",
+        "stepRemoveDevices": "3. Log out from all previous third-party devices and active sessions",
+        "notDeliveredYet": "Credentials Not Yet Dispatched",
+        "notDeliveredDesc": "Credentials will unlock here immediately once payment verification is approved and seller delivers the account."
+      }
     }
   },
   "profile": {
