@@ -254,7 +254,9 @@ export const ListingCard: React.FC<ListingCardProps> = ({
                 {listing.seller.name}
               </span>
               {listing.isVerifiedSeller && (
-                <CheckCircle className="w-3 h-3 text-cyan-500 shrink-0" title={t('card.verifiedSeller')} />
+                <span title={t('card.verifiedSeller')}>
+                  <CheckCircle className="w-3 h-3 text-cyan-500 shrink-0" />
+                </span>
               )}
             </div>
 

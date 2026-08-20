@@ -84,9 +84,9 @@ interface SellerDashboardProps {
 }
 
 export const SellerDashboard: React.FC<SellerDashboardProps> = ({
-  listings,
-  orders,
-  payouts,
+  listings = [],
+  orders = [],
+  payouts = [],
   onOpenSellModal,
   onRequestPayout,
   onUpdateListing,
@@ -115,10 +115,10 @@ export const SellerDashboard: React.FC<SellerDashboardProps> = ({
 
   // Internal tab state if not controlled externally
   const [internalTab, setInternalTab] = useState<SellerTabType>('overview');
-  const activeTab = controlledTab || internalTab;
+  const activeTab = controlledTab || internalTab || 'overview';
   const setTab = (tab: SellerTabType) => {
     if (tab === 'sell') {
-      onOpenSellModal();
+      if (onOpenSellModal) onOpenSellModal();
       return;
     }
     if (setControlledTab) {
@@ -131,27 +131,39 @@ export const SellerDashboard: React.FC<SellerDashboardProps> = ({
   // Dedicated Seller Escrow Room Active Order State (Keeps seller within Seller Studio context)
   const [selectedSellerOrderId, setSelectedSellerOrderId] = useState<string | null>(null);
 
+  // Safe Arrays
+  const safeListings = useMemo(() => (Array.isArray(listings) ? listings : []), [listings]);
+  const safeOrders = useMemo(() => (Array.isArray(orders) ? orders : []), [orders]);
+  const safePayouts = useMemo(() => (Array.isArray(payouts) ? payouts : []), [payouts]);
+
   // Financial Metrics Calculation
-  const totalEarnings = orders
-    .filter((o) => o.status === 'COMPLETED')
-    .reduce((acc, curr) => acc + curr.amountMMK, 1450000);
+  const totalEarnings = useMemo(() => {
+    return safeOrders
+      .filter((o) => o?.status === 'COMPLETED')
+      .reduce((acc, curr) => acc + (curr?.amountMMK || 0), 1450000);
+  }, [safeOrders]);
 
-  const pendingEscrow = orders
-    .filter((o) =>
-      [
-        'PAYMENT_VERIFYING',
-        'ESCROW_LOCKED',
-        'CREDENTIALS_DISPATCHED',
-        'CREDENTIALS_DELIVERED',
-        'INSPECTION_PERIOD',
-        'DISPUTED',
-      ].includes(o.status)
-    )
-    .reduce((acc, curr) => acc + curr.amountMMK, 380000);
+  const pendingEscrow = useMemo(() => {
+    return safeOrders
+      .filter((o) =>
+        o?.status &&
+        [
+          'PAYMENT_VERIFYING',
+          'ESCROW_LOCKED',
+          'CREDENTIALS_DISPATCHED',
+          'CREDENTIALS_DELIVERED',
+          'INSPECTION_PERIOD',
+          'DISPUTED',
+        ].includes(o.status)
+      )
+      .reduce((acc, curr) => acc + (curr?.amountMMK || 0), 380000);
+  }, [safeOrders]);
 
-  const paidOutAmount = payouts
-    .filter((p) => p.status === 'PAID')
-    .reduce((acc, curr) => acc + curr.amountMMK, 950000);
+  const paidOutAmount = useMemo(() => {
+    return safePayouts
+      .filter((p) => p?.status === 'PAID')
+      .reduce((acc, curr) => acc + (curr?.amountMMK || 0), 950000);
+  }, [safePayouts]);
 
   const availableBalanceMMK = Math.max(0, totalEarnings - paidOutAmount);
 
@@ -176,15 +188,16 @@ export const SellerDashboard: React.FC<SellerDashboardProps> = ({
 
   // Action Required Alerts detection
   const awaitingCredentialsOrders = useMemo(() => {
-    return orders.filter((o) => ['ESCROW_LOCKED', 'PAYMENT_VERIFYING'].includes(o.status));
-  }, [orders]);
+    return safeOrders.filter((o) => o?.status && ['ESCROW_LOCKED', 'PAYMENT_VERIFYING'].includes(o.status));
+  }, [safeOrders]);
 
   const activeDisputeOrders = useMemo(() => {
-    return orders.filter((o) => o.status === 'DISPUTED');
-  }, [orders]);
+    return safeOrders.filter((o) => o?.status === 'DISPUTED');
+  }, [safeOrders]);
 
   const ongoingSalesCount = useMemo(() => {
-    return orders.filter((o) =>
+    return safeOrders.filter((o) =>
+      o?.status &&
       [
         'PAYMENT_VERIFYING',
         'ESCROW_LOCKED',
@@ -194,27 +207,29 @@ export const SellerDashboard: React.FC<SellerDashboardProps> = ({
         'DISPUTED',
       ].includes(o.status)
     ).length;
-  }, [orders]);
+  }, [safeOrders]);
 
   // Filtered Listings
   const filteredListings = useMemo(() => {
-    return listings.filter((item) => {
+    return safeListings.filter((item) => {
+      if (!item) return false;
       if (listingFilter !== 'ALL' && item.status !== listingFilter) return false;
       if (listingSearch.trim()) {
         const q = listingSearch.toLowerCase();
         return (
-          item.title.toLowerCase().includes(q) ||
-          item.gameType.toLowerCase().includes(q) ||
-          String(item.priceMMK).includes(q)
+          (item.title || '').toLowerCase().includes(q) ||
+          (item.gameType || '').toLowerCase().includes(q) ||
+          String(item.priceMMK || '').includes(q)
         );
       }
       return true;
     });
-  }, [listings, listingFilter, listingSearch]);
+  }, [safeListings, listingFilter, listingSearch]);
 
   // Filtered Sales Orders
   const filteredSalesOrders = useMemo(() => {
-    return orders.filter((order) => {
+    return safeOrders.filter((order) => {
+      if (!order) return false;
       const isOngoing = [
         'PENDING_PAYMENT_PROOF',
         'PAYMENT_VERIFYING',
@@ -245,7 +260,7 @@ export const SellerDashboard: React.FC<SellerDashboardProps> = ({
 
       return true;
     });
-  }, [orders, salesMainTab, salesSubFilter]);
+  }, [safeOrders, salesMainTab, salesSubFilter]);
 
   // Handlers for Edit Modal
   const handleOpenEditModal = (listing: AccountListing) => {
@@ -888,8 +903,11 @@ export const SellerDashboard: React.FC<SellerDashboardProps> = ({
                   <div className="flex items-start justify-between gap-3">
                     <div className="flex items-start gap-3">
                       <img
-                        src={item.imageUrls[0]}
-                        alt={item.title}
+                        src={
+                          item.imageUrls?.[0] ||
+                          'https://images.unsplash.com/photo-1542751371-adc38448a05e?w=800&auto=format&fit=crop&q=80'
+                        }
+                        alt={item.title || 'Game Account'}
                         className="w-16 h-16 rounded-xl object-cover border border-slate-200 dark:border-slate-800 shrink-0"
                       />
                       <div className="space-y-1">

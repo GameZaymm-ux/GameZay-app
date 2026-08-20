@@ -95,7 +95,7 @@ export const EditListingModal: React.FC<EditListingModalProps> = ({
       ]);
 
       // Populate game-specific stats if present
-      const attrs = listing.attributes || {};
+      const attrs = (listing.attributes || {}) as any;
       if (listing.gameType === 'efootball') {
         setSquadRating(attrs.squadRating || 3150);
         setEpicCount(attrs.epicCount || 14);

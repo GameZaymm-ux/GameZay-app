@@ -27,6 +27,7 @@ import { MobileBottomNav } from './components/MobileBottomNav';
 import { MobileFilterDrawer } from './components/MobileFilterDrawer';
 import { PWAInstallBanner } from './components/PWAInstallBanner';
 import { Footer } from './components/Footer';
+import { ErrorBoundary } from './components/ErrorBoundary';
 import { INITIAL_LISTINGS, INITIAL_ORDERS, INITIAL_PAYOUTS, INITIAL_KYC_SUBMISSIONS } from './data/mockData';
 import {
   AccountListing,
@@ -270,6 +271,7 @@ function MainApp() {
               reason,
               description,
               filedAt: new Date().toISOString(),
+              filedBy: userRole === 'SELLER' ? 'SELLER' : 'BUYER',
               status: 'OPEN',
               proofUrls: proofUrls || [],
             },
@@ -518,392 +520,445 @@ function MainApp() {
       <div className={`flex-1 overflow-y-auto ${currentTab === 'home' ? 'pb-20 sm:pb-16 md:pb-8' : 'pb-20 sm:pb-16 md:pb-6'}`}>
         {/* View 1: Home Page (Includes Marketing, Featured Sections & Footer) */}
         {currentTab === 'home' && (
-          <div className="flex flex-col min-h-full">
-            <div className="flex-1">
-              <HomePageView
-                listings={listings}
-                onSelectGame={(game) => {
-                  setSelectedGame(game);
-                  setCurrentTab('marketplace');
-                }}
-                onNavigateToMarketplace={(game) => {
-                  if (game) setSelectedGame(game);
-                  setCurrentTab('marketplace');
-                }}
-                onOpenSellModal={handleOpenSellModal}
-                onInspectListing={(item) => setInspectListing(item)}
-                onBuyListing={(item) => setBuyListing(item)}
-              />
+          <ErrorBoundary
+            fallbackTitle="Home Page Error"
+            fallbackMessage="An error occurred while displaying the home page."
+            onReset={() => setCurrentTab('home')}
+          >
+            <div className="flex flex-col min-h-full">
+              <div className="flex-1">
+                <HomePageView
+                  listings={listings}
+                  onSelectGame={(game) => {
+                    setSelectedGame(game);
+                    setCurrentTab('marketplace');
+                  }}
+                  onNavigateToMarketplace={(game) => {
+                    if (game) setSelectedGame(game);
+                    setCurrentTab('marketplace');
+                  }}
+                  onOpenSellModal={handleOpenSellModal}
+                  onInspectListing={(item) => setInspectListing(item)}
+                  onBuyListing={(item) => setBuyListing(item)}
+                />
+              </div>
+              {/* Global Promotional, SEO & Support Footer strictly on Home Tab */}
+              <Footer />
             </div>
-            {/* Global Promotional, SEO & Support Footer strictly on Home Tab */}
-            <Footer />
-          </div>
+          </ErrorBoundary>
         )}
 
         {/* View 2: Marketplace Page (Strictly Pure Functional Listing Grid) */}
         {currentTab === 'marketplace' && (
-          <main className="space-y-4 sm:space-y-6">
-            {/* Sticky Game Category Selection */}
-            <GameCategoryTabs
-              selectedGame={selectedGame}
-              onSelectGame={setSelectedGame}
-              gameCounts={gameCounts}
-            />
+          <ErrorBoundary
+            fallbackTitle="Marketplace Error"
+            fallbackMessage="An error occurred while loading marketplace listings."
+            onReset={() => {
+              setSelectedGame('all');
+              setCurrentTab('marketplace');
+            }}
+          >
+            <main className="space-y-4 sm:space-y-6">
+              {/* Sticky Game Category Selection */}
+              <GameCategoryTabs
+                selectedGame={selectedGame}
+                onSelectGame={setSelectedGame}
+                gameCounts={gameCounts}
+              />
 
-            {/* Marketplace Listings Section */}
-            <section
-              id="marketplace-listings"
-              className="w-full max-w-7xl mx-auto px-3.5 sm:px-6 lg:px-8 space-y-4"
-            >
-              {/* Header Title & Active Status */}
-              <div className="flex items-center justify-between pb-1">
-                <div>
-                  <h1 className="text-base sm:text-xl font-black text-slate-900 dark:text-white flex items-center gap-2">
-                    <span>{isMM ? 'ဂိမ်းအကောင့် စျေးကွက်' : 'Verified Accounts Marketplace'}</span>
-                    <span className="text-xs px-2 py-0.5 rounded-full bg-cyan-500/10 text-cyan-600 dark:text-cyan-400 font-mono font-bold">
-                      {filteredListings.length}
-                    </span>
-                  </h1>
-                  <p className="text-xs text-slate-500 dark:text-slate-400 hidden sm:block">
-                    {isMM
-                      ? 'ဝယ်ယူသူ စိတ်ကြိုက်စစ်ဆေးနိုင်သော ၂၄ နာရီ Escrow အာမခံ အကောင့်များ'
-                      : 'Browse game accounts with 100% Escrow buyer protection and verified credentials.'}
-                  </p>
-                </div>
-
-                {/* Quick reset filters button if filtered */}
-                {(selectedGame !== 'all' || verifiedOnly || minPrice !== '' || maxPrice !== '' || searchQuery) && (
-                  <button
-                    onClick={() => {
-                      setSelectedGame('all');
-                      setVerifiedOnly(false);
-                      setMinPrice('');
-                      setMaxPrice('');
-                      setSearchQuery('');
-                    }}
-                    className="text-xs font-bold text-cyan-600 dark:text-cyan-400 hover:underline flex items-center gap-1 cursor-pointer bg-cyan-500/10 px-3 py-1.5 rounded-xl border border-cyan-500/20"
-                  >
-                    <RotateCcw className="w-3.5 h-3.5" />
-                    <span>{t('filters.clearAll')}</span>
-                  </button>
-                )}
-              </div>
-              {/* Collapsible Mobile Top Filter Bar */}
-              <div className="block md:hidden bg-white dark:bg-slate-900/90 border border-slate-200 dark:border-slate-800 rounded-2xl p-3 space-y-2.5 shadow-sm">
-                <div className="flex items-center justify-between gap-2">
-                  <div className="flex items-center gap-2">
-                    <span className="text-xs font-bold text-slate-900 dark:text-white">
-                      {filteredListings.length} {t('filters.resultsFound')}
-                    </span>
-                    {(verifiedOnly || minPrice !== '' || maxPrice !== '') && (
-                      <span className="w-2 h-2 rounded-full bg-cyan-500 animate-pulse" />
-                    )}
+              {/* Marketplace Listings Section */}
+              <section
+                id="marketplace-listings"
+                className="w-full max-w-7xl mx-auto px-3.5 sm:px-6 lg:px-8 space-y-4"
+              >
+                {/* Header Title & Active Status */}
+                <div className="flex items-center justify-between pb-1">
+                  <div>
+                    <h1 className="text-base sm:text-xl font-black text-slate-900 dark:text-white flex items-center gap-2">
+                      <span>{isMM ? 'ဂိမ်းအကောင့် စျေးကွက်' : 'Verified Accounts Marketplace'}</span>
+                      <span className="text-xs px-2 py-0.5 rounded-full bg-cyan-500/10 text-cyan-600 dark:text-cyan-400 font-mono font-bold">
+                        {filteredListings.length}
+                      </span>
+                    </h1>
+                    <p className="text-xs text-slate-500 dark:text-slate-400 hidden sm:block">
+                      {isMM
+                        ? 'ဝယ်ယူသူ စိတ်ကြိုက်စစ်ဆေးနိုင်သော ၂၄ နာရီ Escrow အာမခံ အကောင့်များ'
+                        : 'Browse game accounts with 100% Escrow buyer protection and verified credentials.'}
+                    </p>
                   </div>
 
-                  <div className="flex items-center gap-2">
-                    {/* Toggle Top Filter Expand */}
+                  {/* Quick reset filters button if filtered */}
+                  {(selectedGame !== 'all' || verifiedOnly || minPrice !== '' || maxPrice !== '' || searchQuery) && (
                     <button
-                      onClick={() => setIsTopFilterExpanded(!isTopFilterExpanded)}
-                      className="px-3 py-1.5 rounded-xl bg-slate-100 dark:bg-slate-800 text-slate-700 dark:text-slate-200 text-xs font-semibold flex items-center gap-1.5 border border-slate-200 dark:border-slate-700 active:scale-95 transition"
+                      onClick={() => {
+                        setSelectedGame('all');
+                        setVerifiedOnly(false);
+                        setMinPrice('');
+                        setMaxPrice('');
+                        setSearchQuery('');
+                      }}
+                      className="text-xs font-bold text-cyan-600 dark:text-cyan-400 hover:underline flex items-center gap-1 cursor-pointer bg-cyan-500/10 px-3 py-1.5 rounded-xl border border-cyan-500/20"
                     >
-                      <SlidersHorizontal className="w-3.5 h-3.5 text-cyan-500" />
-                      <span>{isTopFilterExpanded ? (isMM ? 'ပိတ်မည်' : 'Hide') : (isMM ? 'စစ်ထုတ်ရန်' : 'Quick Filters')}</span>
-                      <ChevronDown
-                        className={`w-3.5 h-3.5 transition-transform duration-200 ${
-                          isTopFilterExpanded ? 'rotate-180' : ''
-                        }`}
-                      />
+                      <RotateCcw className="w-3.5 h-3.5" />
+                      <span>{t('filters.clearAll')}</span>
                     </button>
-
-                    {/* Open Mobile Drawer */}
-                    <button
-                      onClick={() => setIsFilterDrawerOpen(true)}
-                      className="p-1.5 rounded-xl bg-cyan-500/10 text-cyan-600 dark:text-cyan-400 border border-cyan-500/20"
-                      aria-label="Open filter drawer"
-                    >
-                      <Filter className="w-4 h-4" />
-                    </button>
-                  </div>
+                  )}
                 </div>
-
-                {/* Expanded Top Filter Controls on Mobile */}
-                {isTopFilterExpanded && (
-                  <div className="pt-2 border-t border-slate-100 dark:border-slate-800/80 space-y-3 animate-in fade-in slide-in-from-top-2 duration-200">
-                    <div className="grid grid-cols-2 gap-2">
-                      <div>
-                        <label className="text-[10px] text-slate-500 dark:text-slate-400 block mb-1">
-                          {t('mobileFilter.minPrice')}
-                        </label>
-                        <input
-                          type="number"
-                          placeholder="Min MMK"
-                          value={minPrice}
-                          onChange={(e) => setMinPrice(e.target.value ? Number(e.target.value) : '')}
-                          className="w-full px-2.5 py-1.5 bg-slate-50 dark:bg-slate-950 border border-slate-200 dark:border-slate-800 rounded-lg text-xs text-slate-900 dark:text-white"
-                        />
-                      </div>
-                      <div>
-                        <label className="text-[10px] text-slate-500 dark:text-slate-400 block mb-1">
-                          {t('mobileFilter.maxPrice')}
-                        </label>
-                        <input
-                          type="number"
-                          placeholder="Max MMK"
-                          value={maxPrice}
-                          onChange={(e) => setMaxPrice(e.target.value ? Number(e.target.value) : '')}
-                          className="w-full px-2.5 py-1.5 bg-slate-50 dark:bg-slate-950 border border-slate-200 dark:border-slate-800 rounded-lg text-xs text-slate-900 dark:text-white"
-                        />
-                      </div>
-                    </div>
-
-                    <div className="flex items-center justify-between pt-1">
-                      <label className="flex items-center gap-2 text-xs text-slate-700 dark:text-slate-300 font-medium cursor-pointer">
-                        <input
-                          type="checkbox"
-                          checked={verifiedOnly}
-                          onChange={(e) => setVerifiedOnly(e.target.checked)}
-                          className="rounded text-cyan-500 focus:ring-cyan-500 bg-slate-100 dark:bg-slate-950 border-slate-300 dark:border-slate-700"
-                        />
-                        <span>{t('mobileFilter.verifiedOnly')}</span>
-                      </label>
-
-                      {(verifiedOnly || minPrice !== '' || maxPrice !== '' || searchQuery) && (
-                        <button
-                          onClick={() => {
-                            setVerifiedOnly(false);
-                            setMinPrice('');
-                            setMaxPrice('');
-                            setSearchQuery('');
-                          }}
-                          className="text-[11px] text-rose-500 dark:text-rose-400 font-medium flex items-center gap-1"
-                        >
-                          <RotateCcw className="w-3 h-3" />
-                          <span>{t('mobileFilter.reset')}</span>
-                        </button>
-                      )}
-                    </div>
-                  </div>
-                )}
-              </div>
-
-              {/* Main Responsive Grid Layout (100% full-width on mobile, 12-cols on desktop) */}
-              <div className="grid grid-cols-1 md:grid-cols-12 gap-6 w-full">
-                {/* Desktop Expanded Sidebar Filters (col-span-1 md:col-span-4 lg:col-span-3) */}
-                <div className="hidden md:block md:col-span-4 lg:col-span-3 space-y-4">
-                  <div className="bg-white dark:bg-slate-900/90 border border-slate-200 dark:border-slate-800 rounded-3xl p-5 space-y-6 shadow-sm sticky top-24 transition-colors">
-                    {/* Header */}
-                    <div className="flex items-center justify-between pb-3 border-b border-slate-200 dark:border-slate-800">
-                      <div className="flex items-center gap-2">
-                        <Filter className="w-4 h-4 text-cyan-500" />
-                        <h3 className="text-sm font-bold text-slate-900 dark:text-white">
-                          {t('filters.filterBy')}
-                        </h3>
-                      </div>
-                      {(selectedGame !== 'all' || verifiedOnly || minPrice !== '' || maxPrice !== '' || searchQuery) && (
-                        <button
-                          onClick={() => {
-                            setSelectedGame('all');
-                            setVerifiedOnly(false);
-                            setMinPrice('');
-                            setMaxPrice('');
-                            setSearchQuery('');
-                          }}
-                          className="text-[11px] text-cyan-600 dark:text-cyan-400 hover:underline flex items-center gap-1"
-                        >
-                          <RotateCcw className="w-3 h-3" />
-                          <span>{t('filters.clearAll')}</span>
-                        </button>
+                {/* Collapsible Mobile Top Filter Bar */}
+                <div className="block md:hidden bg-white dark:bg-slate-900/90 border border-slate-200 dark:border-slate-800 rounded-2xl p-3 space-y-2.5 shadow-sm">
+                  <div className="flex items-center justify-between gap-2">
+                    <div className="flex items-center gap-2">
+                      <span className="text-xs font-bold text-slate-900 dark:text-white">
+                        {filteredListings.length} {t('filters.resultsFound')}
+                      </span>
+                      {(verifiedOnly || minPrice !== '' || maxPrice !== '') && (
+                        <span className="w-2 h-2 rounded-full bg-cyan-500 animate-pulse" />
                       )}
                     </div>
 
-                    {/* Sort Order */}
-                    <div className="space-y-2">
-                      <label className="text-xs font-bold text-slate-500 dark:text-slate-400 flex items-center gap-1.5">
-                        <ArrowUpDown className="w-3.5 h-3.5 text-cyan-500" />
-                        <span>{t('filters.sortBy')}</span>
-                      </label>
-                      <select
-                        value={sortBy}
-                        onChange={(e) => setSortBy(e.target.value as any)}
-                        className="w-full bg-slate-50 dark:bg-slate-950 border border-slate-200 dark:border-slate-800 rounded-xl px-3 py-2 text-xs text-slate-900 dark:text-slate-200 focus:outline-none focus:border-cyan-500 cursor-pointer"
-                      >
-                        <option value="newest">{t('filters.sortNewest')}</option>
-                        <option value="price_low">{t('filters.sortPriceLow')}</option>
-                        <option value="price_high">{t('filters.sortPriceHigh')}</option>
-                        <option value="popular">{t('filters.sortPopular')}</option>
-                      </select>
-                    </div>
-
-                    {/* Price Range (MMK) */}
-                    <div className="space-y-2">
-                      <label className="text-xs font-bold text-slate-500 dark:text-slate-400">
-                        {t('filters.priceRange')}
-                      </label>
-                      <div className="grid grid-cols-2 gap-2">
-                        <input
-                          type="number"
-                          placeholder="Min (ကျပ်)"
-                          value={minPrice}
-                          onChange={(e) =>
-                            setMinPrice(e.target.value ? Number(e.target.value) : '')
-                          }
-                          className="w-full px-3 py-2 bg-slate-50 dark:bg-slate-950 border border-slate-200 dark:border-slate-800 rounded-xl text-xs text-slate-900 dark:text-white placeholder-slate-400 focus:outline-none focus:border-cyan-500 font-mono"
-                        />
-                        <input
-                          type="number"
-                          placeholder="Max (ကျပ်)"
-                          value={maxPrice}
-                          onChange={(e) =>
-                            setMaxPrice(e.target.value ? Number(e.target.value) : '')
-                          }
-                          className="w-full px-3 py-2 bg-slate-50 dark:bg-slate-950 border border-slate-200 dark:border-slate-800 rounded-xl text-xs text-slate-900 dark:text-white placeholder-slate-400 focus:outline-none focus:border-cyan-500 font-mono"
-                        />
-                      </div>
-                    </div>
-
-                    {/* Verified Sellers Toggle */}
-                    <div className="pt-2 border-t border-slate-200 dark:border-slate-800">
-                      <label className="flex items-center gap-2 text-xs font-semibold text-slate-700 dark:text-slate-300 cursor-pointer hover:text-slate-900 dark:hover:text-white transition">
-                        <input
-                          type="checkbox"
-                          checked={verifiedOnly}
-                          onChange={(e) => setVerifiedOnly(e.target.checked)}
-                          className="rounded text-cyan-500 focus:ring-cyan-500 bg-slate-100 dark:bg-slate-950 border-slate-300 dark:border-slate-700"
-                        />
-                        <span>{t('filters.verifiedSellersOnly')}</span>
-                      </label>
-                    </div>
-
-                    {/* Escrow Guarantee Badge */}
-                    <div className="p-3.5 rounded-2xl bg-cyan-50 dark:bg-cyan-950/20 border border-cyan-200 dark:border-cyan-800/40 text-xs space-y-1">
-                      <div className="flex items-center gap-1.5 text-cyan-600 dark:text-cyan-400 font-bold">
-                        <ShieldCheck className="w-4 h-4" />
-                        <span>100% Escrow Shield</span>
-                      </div>
-                      <p className="text-[11px] text-slate-600 dark:text-slate-400 leading-tight">
-                        {isMM
-                          ? 'ဝယ်ယူသူ စိတ်ကြိုက်စစ်ဆေးပြီးမှသာ ရောင်းသူထံ ငွေလွှဲပေးပါသည်'
-                          : 'Zero scam platform. Funds released only after credential check.'}
-                      </p>
-                    </div>
-                  </div>
-                </div>
-
-                {/* Main Listings Grid (col-span-1 md:col-span-8 lg:col-span-9) */}
-                <div className="col-span-1 md:col-span-8 lg:col-span-9 w-full">
-                  {filteredListings.length === 0 ? (
-                    <div className="bg-white dark:bg-slate-900/60 border border-slate-200 dark:border-slate-800 rounded-3xl p-10 sm:p-16 text-center space-y-3 w-full shadow-sm">
-                      <div className="w-12 h-12 rounded-full bg-slate-100 dark:bg-slate-800 flex items-center justify-center mx-auto text-slate-400">
-                        <Search className="w-6 h-6" />
-                      </div>
-                      <h3 className="text-base font-bold text-slate-900 dark:text-white">
-                        {isMM ? 'ကိုက်ညီသော အကောင့် ရှာမတွေ့ပါ' : 'No Accounts Found'}
-                      </h3>
-                      <p className="text-xs text-slate-500 dark:text-slate-400 max-w-sm mx-auto">
-                        {isMM
-                          ? 'ရှာဖွေမှုစကားလုံး သို့မဟုတ် စစ်ထုတ်မှုများကို ပြန်လည်ချိန်ညှိပါ'
-                          : 'Try resetting the filters or searching for other game titles.'}
-                      </p>
+                    <div className="flex items-center gap-2">
+                      {/* Toggle Top Filter Expand */}
                       <button
-                        onClick={() => {
-                          setSelectedGame('all');
-                          setSearchQuery('');
-                          setVerifiedOnly(false);
-                          setMinPrice('');
-                          setMaxPrice('');
-                        }}
-                        className="px-4 py-2 rounded-xl bg-slate-100 dark:bg-slate-800 hover:bg-slate-200 dark:hover:bg-slate-700 text-xs font-bold text-slate-900 dark:text-white transition"
+                        onClick={() => setIsTopFilterExpanded(!isTopFilterExpanded)}
+                        className="px-3 py-1.5 rounded-xl bg-slate-100 dark:bg-slate-800 text-slate-700 dark:text-slate-200 text-xs font-semibold flex items-center gap-1.5 border border-slate-200 dark:border-slate-700 active:scale-95 transition"
                       >
-                        {t('filters.clearAll')}
+                        <SlidersHorizontal className="w-3.5 h-3.5 text-cyan-500" />
+                        <span>{isTopFilterExpanded ? (isMM ? 'ပိတ်မည်' : 'Hide') : (isMM ? 'စစ်ထုတ်ရန်' : 'Quick Filters')}</span>
+                        <ChevronDown
+                          className={`w-3.5 h-3.5 transition-transform duration-200 ${
+                            isTopFilterExpanded ? 'rotate-180' : ''
+                          }`}
+                        />
+                      </button>
+
+                      {/* Open Mobile Drawer */}
+                      <button
+                        onClick={() => setIsFilterDrawerOpen(true)}
+                        className="p-1.5 rounded-xl bg-cyan-500/10 text-cyan-600 dark:text-cyan-400 border border-cyan-500/20"
+                        aria-label="Open filter drawer"
+                      >
+                        <Filter className="w-4 h-4" />
                       </button>
                     </div>
-                  ) : (
-                    <div className="grid grid-cols-2 sm:grid-cols-2 md:grid-cols-3 lg:grid-cols-3 xl:grid-cols-3 2xl:grid-cols-4 gap-2.5 sm:gap-4 lg:gap-4.5 w-full">
-                      {filteredListings.map((listing) => (
-                        <ListingCard
-                          key={listing.id}
-                          listing={listing}
-                          onInspect={(item) => setInspectListing(item)}
-                          onBuy={(item) => setBuyListing(item)}
-                        />
-                      ))}
+                  </div>
+
+                  {/* Expanded Top Filter Controls on Mobile */}
+                  {isTopFilterExpanded && (
+                    <div className="pt-2 border-t border-slate-100 dark:border-slate-800/80 space-y-3 animate-in fade-in slide-in-from-top-2 duration-200">
+                      <div className="grid grid-cols-2 gap-2">
+                        <div>
+                          <label className="text-[10px] text-slate-500 dark:text-slate-400 block mb-1">
+                            {t('mobileFilter.minPrice')}
+                          </label>
+                          <input
+                            type="number"
+                            placeholder="Min MMK"
+                            value={minPrice}
+                            onChange={(e) => setMinPrice(e.target.value ? Number(e.target.value) : '')}
+                            className="w-full px-2.5 py-1.5 bg-slate-50 dark:bg-slate-950 border border-slate-200 dark:border-slate-800 rounded-lg text-xs text-slate-900 dark:text-white"
+                          />
+                        </div>
+                        <div>
+                          <label className="text-[10px] text-slate-500 dark:text-slate-400 block mb-1">
+                            {t('mobileFilter.maxPrice')}
+                          </label>
+                          <input
+                            type="number"
+                            placeholder="Max MMK"
+                            value={maxPrice}
+                            onChange={(e) => setMaxPrice(e.target.value ? Number(e.target.value) : '')}
+                            className="w-full px-2.5 py-1.5 bg-slate-50 dark:bg-slate-950 border border-slate-200 dark:border-slate-800 rounded-lg text-xs text-slate-900 dark:text-white"
+                          />
+                        </div>
+                      </div>
+
+                      <div className="flex items-center justify-between pt-1">
+                        <label className="flex items-center gap-2 text-xs text-slate-700 dark:text-slate-300 font-medium cursor-pointer">
+                          <input
+                            type="checkbox"
+                            checked={verifiedOnly}
+                            onChange={(e) => setVerifiedOnly(e.target.checked)}
+                            className="rounded text-cyan-500 focus:ring-cyan-500 bg-slate-100 dark:bg-slate-950 border-slate-300 dark:border-slate-700"
+                          />
+                          <span>{t('mobileFilter.verifiedOnly')}</span>
+                        </label>
+
+                        {(verifiedOnly || minPrice !== '' || maxPrice !== '' || searchQuery) && (
+                          <button
+                            onClick={() => {
+                              setVerifiedOnly(false);
+                              setMinPrice('');
+                              setMaxPrice('');
+                              setSearchQuery('');
+                            }}
+                            className="text-[11px] text-rose-500 dark:text-rose-400 font-medium flex items-center gap-1"
+                          >
+                            <RotateCcw className="w-3 h-3" />
+                            <span>{t('mobileFilter.reset')}</span>
+                          </button>
+                        )}
+                      </div>
                     </div>
                   )}
                 </div>
-              </div>
-            </section>
-          </main>
+
+                {/* Main Responsive Grid Layout (100% full-width on mobile, 12-cols on desktop) */}
+                <div className="grid grid-cols-1 md:grid-cols-12 gap-6 w-full">
+                  {/* Desktop Expanded Sidebar Filters (col-span-1 md:col-span-4 lg:col-span-3) */}
+                  <div className="hidden md:block md:col-span-4 lg:col-span-3 space-y-4">
+                    <div className="bg-white dark:bg-slate-900/90 border border-slate-200 dark:border-slate-800 rounded-3xl p-5 space-y-6 shadow-sm sticky top-24 transition-colors">
+                      {/* Header */}
+                      <div className="flex items-center justify-between pb-3 border-b border-slate-200 dark:border-slate-800">
+                        <div className="flex items-center gap-2">
+                          <Filter className="w-4 h-4 text-cyan-500" />
+                          <h3 className="text-sm font-bold text-slate-900 dark:text-white">
+                            {t('filters.filterBy')}
+                          </h3>
+                        </div>
+                        {(selectedGame !== 'all' || verifiedOnly || minPrice !== '' || maxPrice !== '' || searchQuery) && (
+                          <button
+                            onClick={() => {
+                              setSelectedGame('all');
+                              setVerifiedOnly(false);
+                              setMinPrice('');
+                              setMaxPrice('');
+                              setSearchQuery('');
+                            }}
+                            className="text-[11px] text-cyan-600 dark:text-cyan-400 hover:underline flex items-center gap-1"
+                          >
+                            <RotateCcw className="w-3 h-3" />
+                            <span>{t('filters.clearAll')}</span>
+                          </button>
+                        )}
+                      </div>
+
+                      {/* Sort Order */}
+                      <div className="space-y-2">
+                        <label className="text-xs font-bold text-slate-500 dark:text-slate-400 flex items-center gap-1.5">
+                          <ArrowUpDown className="w-3.5 h-3.5 text-cyan-500" />
+                          <span>{t('filters.sortBy')}</span>
+                        </label>
+                        <select
+                          value={sortBy}
+                          onChange={(e) => setSortBy(e.target.value as any)}
+                          className="w-full bg-slate-50 dark:bg-slate-950 border border-slate-200 dark:border-slate-800 rounded-xl px-3 py-2 text-xs text-slate-900 dark:text-slate-200 focus:outline-none focus:border-cyan-500 cursor-pointer"
+                        >
+                          <option value="newest">{t('filters.sortNewest')}</option>
+                          <option value="price_low">{t('filters.sortPriceLow')}</option>
+                          <option value="price_high">{t('filters.sortPriceHigh')}</option>
+                          <option value="popular">{t('filters.sortPopular')}</option>
+                        </select>
+                      </div>
+
+                      {/* Price Range (MMK) */}
+                      <div className="space-y-2">
+                        <label className="text-xs font-bold text-slate-500 dark:text-slate-400">
+                          {t('filters.priceRange')}
+                        </label>
+                        <div className="grid grid-cols-2 gap-2">
+                          <input
+                            type="number"
+                            placeholder="Min (ကျပ်)"
+                            value={minPrice}
+                            onChange={(e) =>
+                              setMinPrice(e.target.value ? Number(e.target.value) : '')
+                            }
+                            className="w-full px-3 py-2 bg-slate-50 dark:bg-slate-950 border border-slate-200 dark:border-slate-800 rounded-xl text-xs text-slate-900 dark:text-white placeholder-slate-400 focus:outline-none focus:border-cyan-500 font-mono"
+                          />
+                          <input
+                            type="number"
+                            placeholder="Max (ကျပ်)"
+                            value={maxPrice}
+                            onChange={(e) =>
+                              setMaxPrice(e.target.value ? Number(e.target.value) : '')
+                            }
+                            className="w-full px-3 py-2 bg-slate-50 dark:bg-slate-950 border border-slate-200 dark:border-slate-800 rounded-xl text-xs text-slate-900 dark:text-white placeholder-slate-400 focus:outline-none focus:border-cyan-500 font-mono"
+                          />
+                        </div>
+                      </div>
+
+                      {/* Verified Sellers Toggle */}
+                      <div className="pt-2 border-t border-slate-200 dark:border-slate-800">
+                        <label className="flex items-center gap-2 text-xs font-semibold text-slate-700 dark:text-slate-300 cursor-pointer hover:text-slate-900 dark:hover:text-white transition">
+                          <input
+                            type="checkbox"
+                            checked={verifiedOnly}
+                            onChange={(e) => setVerifiedOnly(e.target.checked)}
+                            className="rounded text-cyan-500 focus:ring-cyan-500 bg-slate-100 dark:bg-slate-950 border-slate-300 dark:border-slate-700"
+                          />
+                          <span>{t('filters.verifiedSellersOnly')}</span>
+                        </label>
+                      </div>
+
+                      {/* Escrow Guarantee Badge */}
+                      <div className="p-3.5 rounded-2xl bg-cyan-50 dark:bg-cyan-950/20 border border-cyan-200 dark:border-cyan-800/40 text-xs space-y-1">
+                        <div className="flex items-center gap-1.5 text-cyan-600 dark:text-cyan-400 font-bold">
+                          <ShieldCheck className="w-4 h-4" />
+                          <span>100% Escrow Shield</span>
+                        </div>
+                        <p className="text-[11px] text-slate-600 dark:text-slate-400 leading-tight">
+                          {isMM
+                            ? 'ဝယ်ယူသူ စိတ်ကြိုက်စစ်ဆေးပြီးမှသာ ရောင်းသူထံ ငွေလွှဲပေးပါသည်'
+                            : 'Zero scam platform. Funds released only after credential check.'}
+                        </p>
+                      </div>
+                    </div>
+                  </div>
+
+                  {/* Main Listings Grid (col-span-1 md:col-span-8 lg:col-span-9) */}
+                  <div className="col-span-1 md:col-span-8 lg:col-span-9 w-full">
+                    {filteredListings.length === 0 ? (
+                      <div className="bg-white dark:bg-slate-900/60 border border-slate-200 dark:border-slate-800 rounded-3xl p-10 sm:p-16 text-center space-y-3 w-full shadow-sm">
+                        <div className="w-12 h-12 rounded-full bg-slate-100 dark:bg-slate-800 flex items-center justify-center mx-auto text-slate-400">
+                          <Search className="w-6 h-6" />
+                        </div>
+                        <h3 className="text-base font-bold text-slate-900 dark:text-white">
+                          {isMM ? 'ကိုက်ညီသော အကောင့် ရှာမတွေ့ပါ' : 'No Accounts Found'}
+                        </h3>
+                        <p className="text-xs text-slate-500 dark:text-slate-400 max-w-sm mx-auto">
+                          {isMM
+                            ? 'ရှာဖွေမှုစကားလုံး သို့မဟုတ် စစ်ထုတ်မှုများကို ပြန်လည်ချိန်ညှိပါ'
+                            : 'Try resetting the filters or searching for other game titles.'}
+                        </p>
+                        <button
+                          onClick={() => {
+                            setSelectedGame('all');
+                            setSearchQuery('');
+                            setVerifiedOnly(false);
+                            setMinPrice('');
+                            setMaxPrice('');
+                          }}
+                          className="px-4 py-2 rounded-xl bg-slate-100 dark:bg-slate-800 hover:bg-slate-200 dark:hover:bg-slate-700 text-xs font-bold text-slate-900 dark:text-white transition"
+                        >
+                          {t('filters.clearAll')}
+                        </button>
+                      </div>
+                    ) : (
+                      <div className="grid grid-cols-2 sm:grid-cols-2 md:grid-cols-3 lg:grid-cols-3 xl:grid-cols-3 2xl:grid-cols-4 gap-2.5 sm:gap-4 lg:gap-4.5 w-full">
+                        {filteredListings.map((listing) => (
+                          <ListingCard
+                            key={listing.id}
+                            listing={listing}
+                            onInspect={(item) => setInspectListing(item)}
+                            onBuy={(item) => setBuyListing(item)}
+                          />
+                        ))}
+                      </div>
+                    )}
+                  </div>
+                </div>
+              </section>
+            </main>
+          </ErrorBoundary>
         )}
 
         {/* View 2: Escrow Room / My Orders */}
         {currentTab === 'orders' && (
-          <EscrowOrderTracker
-            orders={orders}
-            selectedOrderId={selectedOrderId}
-            setSelectedOrderId={setSelectedOrderId}
-            onUpdateOrderStatus={handleUpdateOrderStatus}
-            onOpenDispute={handleOpenDispute}
-            onSendMessage={handleSendMessage}
-            currentRole={userRole}
-          />
+          <ErrorBoundary
+            fallbackTitle="Escrow Tracker Error"
+            fallbackMessage="An error occurred in the Escrow order room."
+            onReset={() => {
+              setSelectedOrderId(null);
+              setCurrentTab('home');
+            }}
+          >
+            <EscrowOrderTracker
+              orders={orders}
+              selectedOrderId={selectedOrderId}
+              setSelectedOrderId={setSelectedOrderId}
+              onUpdateOrderStatus={handleUpdateOrderStatus}
+              onOpenDispute={handleOpenDispute}
+              onSendMessage={handleSendMessage}
+              currentRole={userRole}
+            />
+          </ErrorBoundary>
         )}
 
         {/* View 3: Seller Dashboard */}
         {currentTab === 'seller' && (
-          <SellerDashboard
-            listings={listings}
-            orders={orders}
-            payouts={payouts}
-            onOpenSellModal={handleOpenSellModal}
-            onRequestPayout={handleRequestSellerPayout}
-            onUpdateListing={handleUpdateListing}
-            onDeleteListing={handleDeleteListing}
-            onDeliverCredentials={handleDeliverCredentials}
-            onSendMessage={handleSendMessage}
-            onOpenDispute={handleOpenDispute}
-            kycStatus={kycStatus}
-            onOpenKycModal={() => setIsKycModalOpen(true)}
-            userRole={userRole}
-            activeSellerTab={sellerTab}
-            setActiveSellerTab={setSellerTab}
-            onSwitchToBuyerMode={() => setCurrentTab('home')}
-            onSelectOrder={(orderId) => {
-              setSelectedOrderId(orderId);
-              setCurrentTab('orders');
+          <ErrorBoundary
+            fallbackTitle="Seller Studio Error"
+            fallbackMessage="An error occurred inside Seller Studio."
+            onReset={() => {
+              setSellerTab('overview');
+              setCurrentTab('seller');
             }}
-          />
+          >
+            <SellerDashboard
+              listings={listings}
+              orders={orders}
+              payouts={payouts}
+              onOpenSellModal={handleOpenSellModal}
+              onRequestPayout={handleRequestSellerPayout}
+              onUpdateListing={handleUpdateListing}
+              onDeleteListing={handleDeleteListing}
+              onDeliverCredentials={handleDeliverCredentials}
+              onSendMessage={handleSendMessage}
+              onOpenDispute={handleOpenDispute}
+              kycStatus={kycStatus}
+              onOpenKycModal={() => setIsKycModalOpen(true)}
+              userRole={userRole}
+              activeSellerTab={sellerTab}
+              setActiveSellerTab={setSellerTab}
+              onSwitchToBuyerMode={() => setCurrentTab('home')}
+              onSelectOrder={(orderId) => {
+                setSelectedOrderId(orderId);
+                setCurrentTab('orders');
+              }}
+            />
+          </ErrorBoundary>
         )}
 
         {/* View 4: Admin Desk */}
         {currentTab === 'admin' && (
-          <AdminDashboard
-            orders={orders}
-            payouts={payouts}
-            kycSubmissions={kycSubmissions}
-            onApproveKyc={handleApproveKyc}
-            onRejectKyc={handleRejectKyc}
-            onApprovePaymentSlip={handleApprovePaymentSlip}
-            onRejectPaymentSlip={handleRejectPaymentSlip}
-            onApprovePayout={handleApprovePayout}
-            onAdminRefundBuyer={handleAdminRefundBuyer}
-            onAdminReleaseToSeller={handleAdminReleaseToSeller}
-            onAdminRequestMoreProof={handleAdminRequestMoreProof}
-            onSendMessage={handleSendMessage}
-          />
+          <ErrorBoundary
+            fallbackTitle="Admin Portal Error"
+            fallbackMessage="An error occurred in Admin Dashboard."
+            onReset={() => setCurrentTab('home')}
+          >
+            <AdminDashboard
+              orders={orders}
+              payouts={payouts}
+              kycSubmissions={kycSubmissions}
+              onApproveKyc={handleApproveKyc}
+              onRejectKyc={handleRejectKyc}
+              onApprovePaymentSlip={handleApprovePaymentSlip}
+              onRejectPaymentSlip={handleRejectPaymentSlip}
+              onApprovePayout={handleApprovePayout}
+              onAdminRefundBuyer={handleAdminRefundBuyer}
+              onAdminReleaseToSeller={handleAdminReleaseToSeller}
+              onAdminRequestMoreProof={handleAdminRequestMoreProof}
+              onSendMessage={handleSendMessage}
+            />
+          </ErrorBoundary>
         )}
 
         {/* View 5: Prisma PostgreSQL Schema Viewer */}
-        {currentTab === 'schema' && <PrismaSchemaViewer />}
+        {currentTab === 'schema' && (
+          <ErrorBoundary
+            fallbackTitle="Schema Viewer Error"
+            fallbackMessage="An error occurred while loading Prisma schema."
+            onReset={() => setCurrentTab('home')}
+          >
+            <PrismaSchemaViewer />
+          </ErrorBoundary>
+        )}
 
         {/* View 6: User Profile & Settings Dashboard */}
         {currentTab === 'profile' && (
-          <UserProfileView
-            onOpenSettings={(tab) => setIsSettingsOpen(true)}
-            onOpenKycModal={() => setIsKycModalOpen(true)}
-            kycStatus={kycStatus}
-            userRole={userRole}
-            onNavigateToSellerStudio={() => setCurrentTab('seller')}
-          />
+          <ErrorBoundary
+            fallbackTitle="User Profile Error"
+            fallbackMessage="An error occurred while loading User Profile."
+            onReset={() => setCurrentTab('home')}
+          >
+            <UserProfileView
+              onOpenSettings={(tab) => setIsSettingsOpen(true)}
+              onOpenKycModal={() => setIsKycModalOpen(true)}
+              kycStatus={kycStatus}
+              userRole={userRole}
+              onNavigateToSellerStudio={() => setCurrentTab('seller')}
+            />
+          </ErrorBoundary>
         )}
       </div>
 
@@ -987,7 +1042,7 @@ function MainApp() {
       <KycVerificationModal
         isOpen={isKycModalOpen}
         onClose={() => setIsKycModalOpen(false)}
-        onSubmit={handleKycSubmit}
+        onSubmitKyc={handleKycSubmit}
       />
 
       {/* KYC Gate Alert Modals for Listing Accounts */}
@@ -1010,10 +1065,12 @@ function MainApp() {
 
 export default function App() {
   return (
-    <ThemeProvider>
-      <LanguageProvider>
-        <MainApp />
-      </LanguageProvider>
-    </ThemeProvider>
+    <ErrorBoundary>
+      <ThemeProvider>
+        <LanguageProvider>
+          <MainApp />
+        </LanguageProvider>
+      </ThemeProvider>
+    </ErrorBoundary>
   );
 }
