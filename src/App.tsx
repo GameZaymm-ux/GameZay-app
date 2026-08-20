@@ -462,7 +462,7 @@ function MainApp() {
       />
 
       {/* Main Body Content */}
-      <div className="flex-1 pb-24 md:pb-12">
+      <div className="flex-1 pb-32 sm:pb-28 md:pb-16 overflow-y-auto">
         {/* View 1: Home Page */}
         {currentTab === 'home' && (
           <HomePageView

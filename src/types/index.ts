@@ -53,10 +53,12 @@ export type EscrowStatus =
   | 'PAYMENT_VERIFYING'
   | 'ESCROW_LOCKED'
   | 'CREDENTIALS_DISPATCHED'
+  | 'CREDENTIALS_DELIVERED'
   | 'INSPECTION_PERIOD'
   | 'COMPLETED'
   | 'DISPUTED'
-  | 'REFUNDED';
+  | 'REFUNDED'
+  | 'CANCELLED';
 
 export interface ChatMessage {
   id: string;

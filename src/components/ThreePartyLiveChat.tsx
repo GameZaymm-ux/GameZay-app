@@ -16,11 +16,13 @@ import {
   ExternalLink,
   Bot,
   AlertTriangle,
+  MessageSquare,
 } from 'lucide-react';
 
 interface ThreePartyLiveChatProps {
-  order: EscrowOrder;
+  order?: EscrowOrder | null;
   currentRole?: UserRole;
+  currentUserRole?: UserRole;
   onSendMessage: (orderId: string, message: Omit<ChatMessage, 'id' | 'createdAt' | 'orderId'>) => void;
   onRequestMoreProof?: (orderId: string) => void;
   className?: string;
@@ -30,22 +32,24 @@ interface ThreePartyLiveChatProps {
 export const ThreePartyLiveChat: React.FC<ThreePartyLiveChatProps> = ({
   order,
   currentRole = 'BUYER',
+  currentUserRole,
   onSendMessage,
   onRequestMoreProof,
   className = '',
   isCompact = false,
 }) => {
+  const effectiveRole = currentUserRole || currentRole;
   const { t, isMM } = useLanguage();
   const [inputText, setInputText] = useState('');
   const [activeSenderRole, setActiveSenderRole] = useState<'BUYER' | 'SELLER' | 'ADMIN'>(
-    currentRole === 'ADMIN' ? 'ADMIN' : currentRole === 'SELLER' ? 'SELLER' : 'BUYER'
+    effectiveRole === 'ADMIN' ? 'ADMIN' : effectiveRole === 'SELLER' ? 'SELLER' : 'BUYER'
   );
   const [attachedImage, setAttachedImage] = useState<string | null>(null);
   const [selectedProofPreview, setSelectedProofPreview] = useState<string | null>(null);
   const [isSamplePickerOpen, setIsSamplePickerOpen] = useState(false);
 
   const messagesEndRef = useRef<HTMLDivElement>(null);
-  const messages = order.chatMessages || [];
+  const messages = order?.chatMessages || [];
 
   const scrollToBottom = () => {
     messagesEndRef.current?.scrollIntoView({ behavior: 'smooth' });
@@ -55,21 +59,30 @@ export const ThreePartyLiveChat: React.FC<ThreePartyLiveChatProps> = ({
     scrollToBottom();
   }, [messages.length, attachedImage]);
 
-  // Synchronize when currentRole prop changes
+  // Synchronize when role changes
   useEffect(() => {
-    if (currentRole === 'ADMIN') setActiveSenderRole('ADMIN');
-    else if (currentRole === 'SELLER') setActiveSenderRole('SELLER');
-  }, [currentRole]);
+    if (effectiveRole === 'ADMIN') setActiveSenderRole('ADMIN');
+    else if (effectiveRole === 'SELLER') setActiveSenderRole('SELLER');
+  }, [effectiveRole]);
+
+  if (!order) {
+    return (
+      <div className="p-8 text-center text-slate-400 bg-slate-900/40 rounded-2xl">
+        <MessageSquare className="w-8 h-8 mx-auto mb-2 opacity-50" />
+        <p className="text-xs">No active order selected for live chat.</p>
+      </div>
+    );
+  }
 
   const handleSend = (e?: React.FormEvent) => {
     if (e) e.preventDefault();
     if (!inputText.trim() && !attachedImage) return;
 
-    let senderName = order.buyerName;
+    let senderName = order.buyerName || 'Buyer';
     let senderAvatar = 'https://images.unsplash.com/photo-1566492031773-4f4e44671857?w=150&auto=format&fit=crop&q=80';
 
     if (activeSenderRole === 'SELLER') {
-      senderName = order.sellerName;
+      senderName = order.sellerName || 'Seller';
       senderAvatar = order.listing?.seller?.avatar || 'https://images.unsplash.com/photo-1534528741775-53994a69daeb?w=150&auto=format&fit=crop&q=80';
     } else if (activeSenderRole === 'ADMIN') {
       senderName = isMM ? 'GameZay အငြင်းပွားမှု ကြီးကြပ်ရေးမှူး' : 'GameZay Escrow Dispute Admin';

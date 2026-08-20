@@ -456,7 +456,7 @@ export const AdminDashboard: React.FC<AdminDashboardProps> = ({
                       <ThreePartyLiveChat
                         order={order}
                         currentUserRole="ADMIN"
-                        onSendMessage={(msg) => onSendMessage(order.id, msg)}
+                        onSendMessage={onSendMessage}
                       />
                     </div>
                   </div>
