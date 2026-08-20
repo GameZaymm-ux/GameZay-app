@@ -571,5 +571,22 @@
       "updatePassword": "Update Password",
       "passwordUpdated": "Password changed successfully!"
     }
+  },
+  "footer": {
+    "escrowTitle": "100% Escrow Buyer Protection Guaranteed",
+    "escrowSubtitle": "Zero risk of fraud. Funds disbursed strictly upon buyer verification.",
+    "brandDesc": "The premier Myanmar marketplace for verified gaming accounts with built-in escrow and local wallet payouts.",
+    "featuredGames": "Featured Games",
+    "policies": "Escrow & Policies",
+    "support": "Myanmar Support Desk",
+    "supportHours": "Hotline: 09-798889901 (9 AM - 11 PM)",
+    "policyWarranty": "🛡️ 24-Hour Buyer Warranty",
+    "policyInstantHandoff": "⚡ KPay & WavePay Instant Handoff",
+    "policyVault": "🔐 Encrypted Credential Vault",
+    "policyArbitration": "⚖️ Admin Dispute Mediation",
+    "copyright": "© 2026 GameZay MM Co., Ltd. All rights reserved. Made for Myanmar Gamers 🇲🇲",
+    "terms": "Terms of Escrow",
+    "privacy": "Privacy Policy",
+    "kyc": "KYC Guidelines"
   }
 }

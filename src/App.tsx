@@ -515,26 +515,32 @@ function MainApp() {
       />
 
       {/* Main Body Content */}
-      <div className="flex-1 pb-32 sm:pb-28 md:pb-16 overflow-y-auto">
-        {/* View 1: Home Page */}
+      <div className={`flex-1 overflow-y-auto ${currentTab === 'home' ? 'pb-20 sm:pb-16 md:pb-8' : 'pb-20 sm:pb-16 md:pb-6'}`}>
+        {/* View 1: Home Page (Includes Marketing, Featured Sections & Footer) */}
         {currentTab === 'home' && (
-          <HomePageView
-            listings={listings}
-            onSelectGame={(game) => {
-              setSelectedGame(game);
-              setCurrentTab('marketplace');
-            }}
-            onNavigateToMarketplace={(game) => {
-              if (game) setSelectedGame(game);
-              setCurrentTab('marketplace');
-            }}
-            onOpenSellModal={handleOpenSellModal}
-            onInspectListing={(item) => setInspectListing(item)}
-            onBuyListing={(item) => setBuyListing(item)}
-          />
+          <div className="flex flex-col min-h-full">
+            <div className="flex-1">
+              <HomePageView
+                listings={listings}
+                onSelectGame={(game) => {
+                  setSelectedGame(game);
+                  setCurrentTab('marketplace');
+                }}
+                onNavigateToMarketplace={(game) => {
+                  if (game) setSelectedGame(game);
+                  setCurrentTab('marketplace');
+                }}
+                onOpenSellModal={handleOpenSellModal}
+                onInspectListing={(item) => setInspectListing(item)}
+                onBuyListing={(item) => setBuyListing(item)}
+              />
+            </div>
+            {/* Global Promotional, SEO & Support Footer strictly on Home Tab */}
+            <Footer />
+          </div>
         )}
 
-        {/* View 2: Marketplace Page */}
+        {/* View 2: Marketplace Page (Strictly Pure Functional Listing Grid) */}
         {currentTab === 'marketplace' && (
           <main className="space-y-4 sm:space-y-6">
             {/* Sticky Game Category Selection */}
@@ -900,9 +906,6 @@ function MainApp() {
           />
         )}
       </div>
-
-      {/* Footer */}
-      <Footer />
 
       {/* Mobile Bottom Navigation Bar (5 Primary Touch Destinations) */}
       <MobileBottomNav
