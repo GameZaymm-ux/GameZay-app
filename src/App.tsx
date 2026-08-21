@@ -172,27 +172,34 @@ function MainApp() {
           if ((event === 'SIGNED_IN' || event === 'USER_UPDATED') && session?.user) {
             const user = session.user;
             const profile = await fetchLiveProfile(user.id);
+            const isDemoAccount = user.email === 'gamezaymm@gmail.com' || user.email === 'seller@gamezay.mm';
+            const resolvedKyc: KycStatus = (profile.kycStatus as KycStatus) || (isDemoAccount ? 'VERIFIED' : 'NOT_SUBMITTED');
+            const isPro = Boolean((profile.isProMerchant || isDemoAccount) && resolvedKyc === 'VERIFIED');
+
             if (isMounted) {
               setAuthUser({
                 id: user.id,
                 email: user.email || '',
-                fullName: user.user_metadata?.full_name || profile.name || 'Gamer',
-                username: user.user_metadata?.username || profile.username || 'KyawZin_MM',
-                phone: user.user_metadata?.phone || profile.phone || '09798889901',
-                avatarUrl: user.user_metadata?.avatar_url || 'https://images.unsplash.com/photo-1566492031773-4f4e44671857?w=300&auto=format&fit=crop&q=80',
-                kycStatus: profile.kycStatus || 'VERIFIED',
-                isProMerchant: profile.isProMerchant ?? true,
+                fullName: user.user_metadata?.full_name || profile.name || (isDemoAccount ? 'Ko Min Thant' : 'New Gamer'),
+                username: user.user_metadata?.username || profile.username || user.email?.split('@')[0] || 'gamer',
+                phone: user.user_metadata?.phone || profile.phone || '',
+                avatarUrl: user.user_metadata?.avatar_url || undefined,
+                kycStatus: resolvedKyc,
+                isProMerchant: isPro,
                 role: userRole,
-                balanceMMK: profile.balanceMMK ?? 850000,
-                heldInEscrowMMK: profile.heldInEscrowMMK ?? 320000,
-                sellerRating: profile.sellerRating ?? 4.95,
-                totalRatings: profile.totalRatings ?? 38,
+                balanceMMK: profile.balanceMMK ?? 0,
+                heldInEscrowMMK: profile.heldInEscrowMMK ?? 0,
+                sellerRating: profile.sellerRating ?? 5.0,
+                totalRatings: profile.totalRatings ?? 0,
               });
-              if (profile.kycStatus) setKycStatus(profile.kycStatus);
-              if (profile.subscription) setMerchantSubscription(profile.subscription);
+              setKycStatus(resolvedKyc);
+              if (profile.subscription && resolvedKyc === 'VERIFIED') setMerchantSubscription(profile.subscription);
             }
           } else if (event === 'SIGNED_OUT') {
-            if (isMounted) setAuthUser(null);
+            if (isMounted) {
+              setAuthUser(null);
+              setKycStatus('NOT_SUBMITTED');
+            }
           }
         });
         authSubscription = listener?.subscription;
@@ -296,6 +303,20 @@ function MainApp() {
     setKycStatus('NOT_SUBMITTED');
     setMerchantSubscription(undefined);
     setCurrentTab('home');
+  };
+
+  const handleUpdateUserProfile = (updated: { fullName?: string; phone?: string; avatarUrl?: string }) => {
+    if (!authUser) return;
+    setAuthUser((prev) =>
+      prev
+        ? {
+            ...prev,
+            fullName: updated.fullName !== undefined ? updated.fullName : prev.fullName,
+            phone: updated.phone !== undefined ? updated.phone : prev.phone,
+            avatarUrl: updated.avatarUrl !== undefined ? updated.avatarUrl : prev.avatarUrl,
+          }
+        : null
+    );
   };
 
 
@@ -779,6 +800,20 @@ function MainApp() {
       // ignore
     }
   };
+
+  // Mandatory Auth Landing Screen (Guest Guard):
+  // When no user is authenticated, render the dedicated full-screen Auth Landing Page
+  if (!authUser) {
+    return (
+      <div className="min-h-screen bg-slate-50 dark:bg-slate-950 text-slate-900 dark:text-slate-100 flex flex-col justify-center items-center font-sans transition-colors duration-200">
+        <AuthView
+          initialMode={authScreenMode || 'signin'}
+          isMandatoryLanding={true}
+          onAuthSuccess={handleAuthSuccess}
+        />
+      </div>
+    );
+  }
 
   return (
     <div className="min-h-screen bg-slate-50 dark:bg-slate-950 text-slate-900 dark:text-slate-100 flex flex-col font-sans transition-colors duration-200">
@@ -1320,6 +1355,7 @@ function MainApp() {
               authUser={authUser}
               onOpenAuthModal={handleOpenAuthModal}
               onLogout={handleSignOut}
+              onUpdateUserProfile={handleUpdateUserProfile}
             />
           </ErrorBoundary>
         )}

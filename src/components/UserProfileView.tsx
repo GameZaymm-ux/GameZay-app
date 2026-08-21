@@ -2,6 +2,7 @@ import React, { useState } from 'react';
 import { useLanguage } from '../context/LanguageContext';
 import { useTheme } from '../context/ThemeContext';
 import { KycStatus, UserRole, MerchantSubscription, AuthUser } from '../types';
+import { updateUserProfile } from '../lib/supabaseClient';
 import {
   ShieldCheck,
   ShieldAlert,
@@ -25,6 +26,13 @@ import {
   Crown,
   LogIn,
   Wallet,
+  Edit3,
+  Camera,
+  X,
+  AlertCircle,
+  CheckCircle2,
+  Layers,
+  Award,
 } from 'lucide-react';
 
 interface UserProfileViewProps {
@@ -37,23 +45,95 @@ interface UserProfileViewProps {
   authUser?: AuthUser | null;
   onOpenAuthModal?: (mode?: 'signin' | 'signup') => void;
   onLogout?: () => void;
+  onUpdateUserProfile?: (updated: { fullName?: string; phone?: string; avatarUrl?: string }) => void;
 }
 
 export const UserProfileView: React.FC<UserProfileViewProps> = ({
   onOpenSettings,
   onOpenKycModal,
-  kycStatus = 'VERIFIED',
+  kycStatus = 'NOT_SUBMITTED',
   userRole = 'BUYER',
   onNavigateToSellerStudio,
   merchantSubscription,
   authUser,
   onOpenAuthModal,
   onLogout,
+  onUpdateUserProfile,
 }) => {
   const { t, language, setLanguage, currency, setCurrency, isMM } = useLanguage();
   const { theme, setTheme, actualTheme } = useTheme();
+  
   const [showLogoutConfirm, setShowLogoutConfirm] = useState(false);
   const [loggedOutNotice, setLoggedOutNotice] = useState(false);
+
+  // Edit Profile Modal State
+  const [isEditProfileOpen, setIsEditProfileOpen] = useState(false);
+  const [editFullName, setEditFullName] = useState(authUser?.fullName || '');
+  const [editPhone, setEditPhone] = useState(authUser?.phone || '');
+  const [editAvatarUrl, setEditAvatarUrl] = useState(authUser?.avatarUrl || '');
+  const [isSavingProfile, setIsSavingProfile] = useState(false);
+  const [editFeedback, setEditFeedback] = useState<{ type: 'success' | 'error'; message: string } | null>(null);
+
+  // Sync edit form with authUser when opened
+  const handleOpenEditModal = () => {
+    setEditFullName(authUser?.fullName || '');
+    setEditPhone(authUser?.phone || '');
+    setEditAvatarUrl(authUser?.avatarUrl || '');
+    setEditFeedback(null);
+    setIsEditProfileOpen(true);
+  };
+
+  const handleSaveProfile = async (e: React.FormEvent) => {
+    e.preventDefault();
+    if (!authUser) return;
+
+    if (!editFullName.trim()) {
+      setEditFeedback({
+        type: 'error',
+        message: isMM ? 'အမည်ရင်း ထည့်သွင်းပေးပါ' : 'Please enter your full name',
+      });
+      return;
+    }
+
+    setIsSavingProfile(true);
+    setEditFeedback(null);
+
+    try {
+      const cleanAvatar = editAvatarUrl.trim() || undefined;
+      const cleanName = editFullName.trim();
+      const cleanPhone = editPhone.trim();
+
+      await updateUserProfile(authUser.id, {
+        fullName: cleanName,
+        phone: cleanPhone,
+        avatarUrl: cleanAvatar,
+      });
+
+      if (onUpdateUserProfile) {
+        onUpdateUserProfile({
+          fullName: cleanName,
+          phone: cleanPhone,
+          avatarUrl: cleanAvatar,
+        });
+      }
+
+      setEditFeedback({
+        type: 'success',
+        message: isMM ? 'ပရိုဖိုင် အချက်အလက်များကို အောင်မြင်စွာ ပြင်ဆင်ပြီးပါပြီ' : 'Profile updated successfully!',
+      });
+
+      setTimeout(() => {
+        setIsEditProfileOpen(false);
+      }, 1000);
+    } catch (err: any) {
+      setEditFeedback({
+        type: 'error',
+        message: err?.message || (isMM ? 'ပြင်ဆင်မှု မအောင်မြင်ပါ' : 'Failed to update profile'),
+      });
+    } finally {
+      setIsSavingProfile(false);
+    }
+  };
 
   const handleLogout = () => {
     setShowLogoutConfirm(false);
@@ -66,12 +146,23 @@ export const UserProfileView: React.FC<UserProfileViewProps> = ({
     }, 3000);
   };
 
-  const displayName = authUser?.fullName || (isMM ? 'ဧည့်သည် (အကောင့်မဝင်ထားပါ)' : 'Guest (Logged Out)');
-  const displayUsername = authUser?.username || 'Guest';
-  const displayEmail = authUser?.email || (isMM ? 'အကောင့်ဝင်ရန် လိုအပ်သည်' : 'Not signed in');
-  const displayPhone = authUser?.phone || '-';
+  const displayName = authUser?.fullName || (isMM ? 'အကောင့်ဖွင့်ပြီးစ Gamer' : 'New Gamer');
+  const displayUsername = authUser?.username || 'gamer';
+  const displayEmail = authUser?.email || '-';
+  const displayPhone = authUser?.phone || (isMM ? 'မထည့်ရသေးပါ' : 'Not set');
   const initialLetter = (authUser?.fullName || authUser?.username || 'G').charAt(0).toUpperCase();
+  
+  // Resolved KYC Status
   const activeKyc = authUser?.kycStatus || kycStatus;
+  
+  // Strict 3-Level Progression Calculation:
+  // Level 1: UNVERIFIED (Default for all newly registered accounts)
+  // Level 2: VERIFIED (Strictly when activeKyc === 'VERIFIED')
+  // Level 3: PRO MERCHANT (Strictly when activeKyc === 'VERIFIED' AND (isProMerchant || subscription active))
+  const isLevel2Verified = activeKyc === 'VERIFIED';
+  const isLevel3ProMerchant = isLevel2Verified && Boolean(authUser?.isProMerchant || merchantSubscription?.isActive);
+  
+  const userLevel = isLevel3ProMerchant ? 3 : isLevel2Verified ? 2 : 1;
 
   return (
     <div className="w-full max-w-4xl mx-auto px-4 sm:px-6 lg:px-8 py-6 space-y-6 animate-in fade-in duration-200">
@@ -86,124 +177,132 @@ export const UserProfileView: React.FC<UserProfileViewProps> = ({
         </div>
       )}
 
-      {/* Guest Mode Banner if not logged in */}
-      {!authUser && (
-        <div className="p-5 rounded-3xl bg-gradient-to-r from-cyan-500/15 via-teal-500/10 to-emerald-500/15 border border-cyan-500/30 flex flex-col sm:flex-row items-center justify-between gap-4">
-          <div className="flex items-center gap-3 text-center sm:text-left">
-            <div className="w-10 h-10 rounded-2xl bg-cyan-500/20 text-cyan-500 flex items-center justify-center shrink-0">
-              <LogIn className="w-5 h-5" />
-            </div>
-            <div>
-              <h4 className="text-sm font-bold text-slate-900 dark:text-white">
-                {isMM ? 'GameZay.MM အကောင့်ဖြင့် ဝင်ရောက်ပါ' : 'Sign in to GameZay.MM'}
-              </h4>
-              <p className="text-xs text-slate-600 dark:text-slate-400">
-                {isMM ? 'Escrow အရောင်းအဝယ်များနှင့် အကောင့်မှတ်တမ်းများကို သိမ်းဆည်းရန်' : 'Save your verified orders, wallets, and escrow ratings'}
-              </p>
-            </div>
-          </div>
-          <div className="flex items-center gap-2 shrink-0">
-            <button
-              onClick={() => onOpenAuthModal && onOpenAuthModal('signin')}
-              className="px-4 py-2 rounded-xl bg-cyan-500 hover:bg-cyan-400 text-slate-950 font-black text-xs shadow-md shadow-cyan-500/20 transition cursor-pointer"
-            >
-              {isMM ? 'အကောင့်ဝင်မည်' : 'Sign In'}
-            </button>
-            <button
-              onClick={() => onOpenAuthModal && onOpenAuthModal('signup')}
-              className="px-4 py-2 rounded-xl bg-slate-200 dark:bg-slate-800 hover:bg-slate-300 dark:hover:bg-slate-700 text-slate-800 dark:text-slate-200 font-bold text-xs transition cursor-pointer"
-            >
-              {isMM ? 'အကောင့်သစ်ဖွင့်မည်' : 'Sign Up'}
-            </button>
-          </div>
-        </div>
-      )}
-
       {/* ======================================================== */}
-      {/* 1. USER HEADER                                           */}
+      {/* 1. USER HEADER & LEVEL PROGRESSION CARD                 */}
       {/* ======================================================== */}
       <div className="bg-white dark:bg-slate-900 border border-slate-200 dark:border-slate-800 rounded-3xl p-6 sm:p-8 shadow-sm relative overflow-hidden">
         {/* Subtle Background Glow */}
         <div className="absolute top-0 right-0 w-72 h-72 bg-gradient-to-bl from-cyan-500/10 via-purple-500/5 to-transparent rounded-full blur-3xl pointer-events-none" />
 
-        <div className="relative flex flex-col sm:flex-row items-start sm:items-center justify-between gap-6">
+        <div className="relative flex flex-col md:flex-row items-start md:items-center justify-between gap-6">
           {/* Avatar & User Details */}
           <div className="flex items-center gap-4 sm:gap-5">
-            <div className="relative">
+            <div className="relative group">
               {authUser?.avatarUrl ? (
                 <img
                   src={authUser.avatarUrl}
                   alt="Profile Avatar"
-                  className="w-18 h-18 sm:w-20 sm:h-20 rounded-2xl object-cover border-2 border-cyan-500 shadow-md shadow-cyan-500/20"
+                  className="w-20 h-20 sm:w-22 sm:h-22 rounded-2xl object-cover border-2 border-cyan-500 shadow-md shadow-cyan-500/20"
                 />
               ) : (
-                <div className="w-18 h-18 sm:w-20 sm:h-20 rounded-2xl bg-gradient-to-br from-cyan-600 via-blue-700 to-indigo-800 text-white font-black text-2xl sm:text-3xl flex items-center justify-center border-2 border-cyan-400/50 shadow-md shadow-cyan-500/20 select-none">
+                <div className="w-20 h-20 sm:w-22 sm:h-22 rounded-2xl bg-gradient-to-br from-cyan-600 via-blue-700 to-indigo-800 text-white font-black text-2xl sm:text-3xl flex items-center justify-center border-2 border-cyan-400/50 shadow-md shadow-cyan-500/20 select-none">
                   {initialLetter}
                 </div>
               )}
-              {activeKyc === 'VERIFIED' && (
+              
+              {isLevel2Verified && (
                 <div
-                  className="absolute -bottom-1 -right-1 p-1 bg-emerald-500 text-slate-950 rounded-full ring-2 ring-white dark:ring-slate-900 shadow-sm"
-                  title="KYC Verified"
+                  className="absolute -bottom-1.5 -right-1.5 p-1 bg-emerald-500 text-slate-950 rounded-full ring-2 ring-white dark:ring-slate-900 shadow-sm"
+                  title="Level 2 KYC Verified"
                 >
-                  <ShieldCheck className="w-3.5 h-3.5 stroke-[3]" />
+                  <ShieldCheck className="w-4 h-4 stroke-[3]" />
                 </div>
+              )}
+
+              {/* Quick edit avatar button */}
+              {authUser && (
+                <button
+                  type="button"
+                  onClick={handleOpenEditModal}
+                  className="absolute inset-0 rounded-2xl bg-black/40 text-white opacity-0 group-hover:opacity-100 transition flex items-center justify-center cursor-pointer"
+                  title={isMM ? 'ပရိုဖိုင်ပုံ ပြင်မည်' : 'Change Photo'}
+                >
+                  <Camera className="w-5 h-5" />
+                </button>
               )}
             </div>
 
-            <div className="space-y-1">
+            <div className="space-y-1.5">
               <div className="flex items-center gap-2 flex-wrap">
                 <h1 className="text-lg sm:text-2xl font-black text-slate-900 dark:text-white tracking-tight">
                   {displayUsername}
                 </h1>
-                <span className="text-[10px] font-bold px-2 py-0.5 rounded-md bg-cyan-500/10 text-cyan-600 dark:text-cyan-400 border border-cyan-500/20 font-mono">
+                <span className="text-xs font-bold px-2.5 py-0.5 rounded-lg bg-slate-100 dark:bg-slate-800 text-slate-700 dark:text-slate-300 border border-slate-200 dark:border-slate-700">
                   {displayName}
                 </span>
-                {merchantSubscription?.isActive && (
-                  <span className="px-2 py-0.5 rounded-md bg-gradient-to-r from-amber-500 via-yellow-400 to-amber-500 text-slate-950 text-[10px] font-black flex items-center gap-1 shadow-sm font-mono">
-                    <Crown className="w-3 h-3 fill-slate-950" />
-                    <span>PRO MERCHANT</span>
-                  </span>
+
+                {/* Edit Profile Button */}
+                {authUser && (
+                  <button
+                    type="button"
+                    onClick={handleOpenEditModal}
+                    className="p-1 px-2 rounded-lg bg-cyan-500/10 hover:bg-cyan-500/20 text-cyan-600 dark:text-cyan-400 text-xs font-bold transition flex items-center gap-1 cursor-pointer border border-cyan-500/20"
+                    title={isMM ? 'ပရိုဖိုင် အချက်အလက်များ ပြင်ဆင်မည်' : 'Edit Profile'}
+                  >
+                    <Edit3 className="w-3.5 h-3.5" />
+                    <span>{isMM ? 'ပြင်မည်' : 'Edit'}</span>
+                  </button>
                 )}
               </div>
 
+              {/* Contact Info */}
               <div className="flex flex-col sm:flex-row sm:items-center gap-1.5 sm:gap-4 text-xs text-slate-500 dark:text-slate-400">
                 <div className="flex items-center gap-1.5">
-                  <Mail className="w-3.5 h-3.5 text-cyan-500" />
-                  <span>{displayEmail}</span>
+                  <Mail className="w-3.5 h-3.5 text-cyan-500 shrink-0" />
+                  <span className="truncate max-w-[200px] sm:max-w-none">{displayEmail}</span>
                 </div>
                 <div className="flex items-center gap-1.5">
-                  <Phone className="w-3.5 h-3.5 text-emerald-500" />
+                  <Phone className="w-3.5 h-3.5 text-emerald-500 shrink-0" />
                   <span>{displayPhone}</span>
                 </div>
               </div>
 
-              <div className="text-[11px] text-slate-400">
-                {t('profile.memberSince')}: <strong className="text-slate-700 dark:text-slate-300">August 2024</strong>
+              {/* 3-Level Hierarchy Visual Badge */}
+              <div className="pt-1 flex items-center gap-2 flex-wrap">
+                {userLevel === 3 ? (
+                  <span className="px-3 py-1 rounded-xl bg-gradient-to-r from-amber-500 via-yellow-400 to-amber-500 text-slate-950 text-xs font-black flex items-center gap-1.5 shadow-md shadow-amber-500/20 font-mono tracking-tight">
+                    <Crown className="w-3.5 h-3.5 fill-slate-950" />
+                    <span>LEVEL 3: PRO MERCHANT</span>
+                  </span>
+                ) : userLevel === 2 ? (
+                  <span className="px-3 py-1 rounded-xl bg-emerald-500/15 border border-emerald-500/30 text-emerald-600 dark:text-emerald-400 text-xs font-black flex items-center gap-1.5 font-mono tracking-tight">
+                    <ShieldCheck className="w-3.5 h-3.5 text-emerald-500" />
+                    <span>LEVEL 2: VERIFIED SELLER</span>
+                  </span>
+                ) : (
+                  <span className="px-3 py-1 rounded-xl bg-slate-100 dark:bg-slate-800 border border-slate-200 dark:border-slate-700 text-slate-600 dark:text-slate-400 text-xs font-bold flex items-center gap-1.5 font-mono">
+                    <ShieldAlert className="w-3.5 h-3.5 text-amber-500" />
+                    <span>
+                      {activeKyc === 'PENDING'
+                        ? 'LEVEL 1: ⏳ KYC စိစစ်ဆဲ (PENDING)'
+                        : 'LEVEL 1: UNVERIFIED (မစိစစ်ရသေးပါ)'}
+                    </span>
+                  </span>
+                )}
               </div>
             </div>
           </div>
 
-          {/* KYC Status Badge or Apply Button */}
-          <div className="shrink-0 self-start sm:self-center">
-            {activeKyc === 'VERIFIED' ? (
-              <div className="px-3.5 py-2 rounded-2xl bg-emerald-500/10 border border-emerald-500/30 text-emerald-600 dark:text-emerald-400 font-bold text-xs flex items-center gap-2 shadow-sm">
-                <ShieldCheck className="w-4 h-4 text-emerald-500" />
-                <span>{isMM ? '✓ KYC အတည်ပြုပြီး' : '✓ Verified'}</span>
+          {/* Action on Header (KYC Trigger) */}
+          <div className="shrink-0 self-start md:self-center w-full sm:w-auto">
+            {userLevel >= 2 ? (
+              <div className="px-4 py-2.5 rounded-2xl bg-emerald-500/10 border border-emerald-500/30 text-emerald-600 dark:text-emerald-400 font-bold text-xs flex items-center justify-center gap-2">
+                <CheckCircle2 className="w-4 h-4 text-emerald-500" />
+                <span>{isMM ? 'KYC စိစစ်အတည်ပြုပြီး' : 'KYC Approved'}</span>
               </div>
             ) : activeKyc === 'PENDING' ? (
-              <div className="px-3.5 py-2 rounded-2xl bg-amber-500/10 border border-amber-500/30 text-amber-600 dark:text-amber-400 font-bold text-xs flex items-center gap-2 shadow-sm">
+              <div className="px-4 py-2.5 rounded-2xl bg-amber-500/10 border border-amber-500/30 text-amber-600 dark:text-amber-400 font-bold text-xs flex items-center justify-center gap-2">
                 <Clock className="w-4 h-4 text-amber-500 animate-spin" />
-                <span>{isMM ? '⏳ KYC စိစစ်ဆဲ' : '⏳ KYC Under Review'}</span>
+                <span>{isMM ? 'စိစစ်ဆဲ (Admin Review)' : 'Pending Review'}</span>
               </div>
             ) : (
               <button
                 type="button"
                 onClick={() => onOpenKycModal && onOpenKycModal()}
-                className="px-4 py-2 rounded-2xl bg-gradient-to-r from-amber-500 to-orange-500 hover:from-amber-400 hover:to-orange-400 text-slate-950 font-black text-xs shadow-md shadow-amber-500/20 transition flex items-center gap-2 cursor-pointer active:scale-95"
+                className="w-full sm:w-auto px-5 py-2.5 rounded-2xl bg-gradient-to-r from-amber-500 to-orange-500 hover:from-amber-400 hover:to-orange-400 text-slate-950 font-black text-xs shadow-md shadow-amber-500/25 transition flex items-center justify-center gap-2 cursor-pointer active:scale-95"
               >
                 <ShieldAlert className="w-4 h-4" />
-                <span>{t('profile.unverifiedBadge')}</span>
+                <span>{isMM ? 'KYC လျှောက်ထားမည် (Level 2)' : 'Apply for KYC (Level 2)'}</span>
                 <Sparkles className="w-3.5 h-3.5 text-slate-950" />
               </button>
             )}
@@ -211,11 +310,110 @@ export const UserProfileView: React.FC<UserProfileViewProps> = ({
         </div>
       </div>
 
+      {/* ======================================================== */}
+      {/* 2. USER LEVEL PROGRESSION EXPLANATION CARD              */}
+      {/* ======================================================== */}
+      <div className="bg-white dark:bg-slate-900 border border-slate-200 dark:border-slate-800 rounded-3xl p-5 sm:p-6 shadow-sm space-y-4">
+        <div className="flex items-center justify-between">
+          <div className="flex items-center gap-2">
+            <div className="p-2 rounded-xl bg-cyan-500/10 text-cyan-500">
+              <Layers className="w-4 h-4" />
+            </div>
+            <h2 className="text-sm sm:text-base font-black text-slate-900 dark:text-white">
+              {isMM ? 'GameZay အသုံးပြုသူ အဆင့်ဆင့် (Progression Levels)' : 'User Level Progression'}
+            </h2>
+          </div>
+          <span className="text-[11px] font-bold text-cyan-600 dark:text-cyan-400 font-mono">
+            Level {userLevel} / 3
+          </span>
+        </div>
+
+        <div className="grid grid-cols-1 sm:grid-cols-3 gap-3">
+          {/* Level 1 Card */}
+          <div
+            className={`p-4 rounded-2xl border transition ${
+              userLevel === 1
+                ? 'bg-amber-500/5 border-amber-500/40 ring-1 ring-amber-500/30'
+                : 'bg-slate-50 dark:bg-slate-950 border-slate-200 dark:border-slate-800'
+            }`}
+          >
+            <div className="flex items-center justify-between mb-2">
+              <span className="text-xs font-black text-slate-900 dark:text-white">
+                Level 1: UNVERIFIED
+              </span>
+              {userLevel === 1 && (
+                <span className="text-[10px] font-black px-2 py-0.5 rounded-full bg-amber-500/20 text-amber-500">
+                  CURRENT
+                </span>
+              )}
+            </div>
+            <p className="text-[11px] text-slate-500 dark:text-slate-400 leading-relaxed">
+              {isMM
+                ? 'အကောင့်သစ်များအတွက် ပုံသေအဆင့်။ စျေးကွက်ကြည့်ရှုခြင်းနှင့် အကောင့်ဝယ်ယူခြင်းများ ပြုလုပ်နိုင်သည်။'
+                : 'Default for new accounts. Browse listings, inspect accounts, and buy securely.'}
+            </p>
+          </div>
+
+          {/* Level 2 Card */}
+          <div
+            className={`p-4 rounded-2xl border transition ${
+              userLevel === 2
+                ? 'bg-emerald-500/5 border-emerald-500/40 ring-1 ring-emerald-500/30'
+                : userLevel > 2
+                ? 'bg-slate-50 dark:bg-slate-950 border-slate-200 dark:border-slate-800 opacity-90'
+                : 'bg-slate-50/50 dark:bg-slate-950/50 border-slate-200/50 dark:border-slate-800/50 opacity-70'
+            }`}
+          >
+            <div className="flex items-center justify-between mb-2">
+              <span className="text-xs font-black text-slate-900 dark:text-white flex items-center gap-1">
+                <ShieldCheck className="w-3.5 h-3.5 text-emerald-500" />
+                <span>Level 2: VERIFIED</span>
+              </span>
+              {userLevel === 2 && (
+                <span className="text-[10px] font-black px-2 py-0.5 rounded-full bg-emerald-500/20 text-emerald-500">
+                  CURRENT
+                </span>
+              )}
+            </div>
+            <p className="text-[11px] text-slate-500 dark:text-slate-400 leading-relaxed">
+              {isMM
+                ? 'KYC မှတ်ပုံတင်စိစစ်ပြီးပါက Seller Studio နှင့် အရောင်းတင်ခြင်းများ အလိုအလျောက် ပွင့်မည်။'
+                : 'Unlocks Seller Studio and listing creation upon Admin KYC verification.'}
+            </p>
+          </div>
+
+          {/* Level 3 Card */}
+          <div
+            className={`p-4 rounded-2xl border transition ${
+              userLevel === 3
+                ? 'bg-amber-500/10 border-amber-500/50 ring-1 ring-amber-500/40'
+                : 'bg-slate-50/50 dark:bg-slate-950/50 border-slate-200/50 dark:border-slate-800/50 opacity-70'
+            }`}
+          >
+            <div className="flex items-center justify-between mb-2">
+              <span className="text-xs font-black text-slate-900 dark:text-white flex items-center gap-1">
+                <Crown className="w-3.5 h-3.5 text-amber-500 fill-amber-500" />
+                <span>Level 3: PRO MERCHANT</span>
+              </span>
+              {userLevel === 3 && (
+                <span className="text-[10px] font-black px-2 py-0.5 rounded-full bg-amber-500 text-slate-950 font-mono">
+                  CURRENT
+                </span>
+              )}
+            </div>
+            <p className="text-[11px] text-slate-500 dark:text-slate-400 leading-relaxed">
+              {isMM
+                ? 'ရောင်းချမှု ၁၀ ခုပြည့်ပြီး သီးသန့် Pro Merchant လျှောက်ထားသူများအတွက် အထူး badge နှင့် bump quota ရရှိမည်။'
+                : 'Verified sellers with 10+ completed orders. Unlocks gold badge & auto-bump features.'}
+            </p>
+          </div>
+        </div>
+      </div>
 
       {/* ======================================================== */}
-      {/* 2. SELLER STUDIO ENTRY BANNER                            */}
+      {/* 3. SELLER STUDIO ENTRY BANNER                            */}
       {/* ======================================================== */}
-      {activeKyc === 'VERIFIED' ? (
+      {isLevel2Verified ? (
         <div className="bg-gradient-to-r from-slate-900 via-emerald-950/40 to-slate-900 border border-emerald-500/30 rounded-3xl p-6 sm:p-7 shadow-lg relative overflow-hidden group">
           <div className="absolute right-0 top-0 bottom-0 w-1/3 bg-emerald-500/5 blur-2xl pointer-events-none" />
 
@@ -228,7 +426,7 @@ export const UserProfileView: React.FC<UserProfileViewProps> = ({
                 <h2 className="text-base sm:text-lg font-black text-white flex items-center gap-2">
                   <span>{t('profile.sellerStudioBanner.header')}</span>
                   <span className="text-[10px] font-bold px-2 py-0.5 rounded-full bg-emerald-500 text-slate-950 font-mono">
-                    {t('profile.sellerStudioBanner.badge')}
+                    UNLOCKED
                   </span>
                 </h2>
               </div>
@@ -256,7 +454,7 @@ export const UserProfileView: React.FC<UserProfileViewProps> = ({
                   <Lock className="w-5 h-5" />
                 </div>
                 <h2 className="text-base sm:text-lg font-black text-white flex items-center gap-2">
-                  <span>{isMM ? 'Seller Studio အကောင့်သော့ခတ်ထားပါသည်' : 'Seller Studio Locked'}</span>
+                  <span>{isMM ? 'Seller Studio သော့ခတ်ထားပါသည်' : 'Seller Studio Locked'}</span>
                   <span className="text-[10px] font-bold px-2 py-0.5 rounded-full bg-amber-500/20 text-amber-300 border border-amber-500/30 font-mono">
                     KYC REQUIRED
                   </span>
@@ -279,253 +477,339 @@ export const UserProfileView: React.FC<UserProfileViewProps> = ({
               className="px-6 py-3 rounded-2xl bg-gradient-to-r from-amber-500 to-orange-500 hover:from-amber-400 hover:to-orange-400 text-slate-950 font-black text-xs sm:text-sm shadow-md shadow-amber-500/20 transition flex items-center justify-center gap-2 cursor-pointer active:scale-95 shrink-0"
             >
               <ShieldAlert className="w-4 h-4" />
-              <span>{activeKyc === 'PENDING' ? (isMM ? 'စိစစ်ဆဲ အခြေအနေ ကြည့်မည်' : 'Check Status') : (isMM ? 'KYC လျှောက်ထားမည်' : 'Complete KYC')}</span>
+              <span>{activeKyc === 'PENDING' ? (isMM ? 'စိစစ်ဆဲ အခြေအနေ' : 'Check Status') : (isMM ? 'KYC လျှောက်ထားမည်' : 'Complete KYC')}</span>
             </button>
           </div>
         </div>
       )}
 
       {/* ======================================================== */}
-      {/* 3. SETTINGS SECTION                                      */}
+      {/* 4. SETTINGS & LOGOUT SECTION                             */}
       {/* ======================================================== */}
-      <div className="bg-white dark:bg-slate-900 border border-slate-200 dark:border-slate-800 rounded-3xl p-6 sm:p-7 shadow-sm space-y-6">
-        <div className="flex items-center justify-between border-b border-slate-100 dark:border-slate-800 pb-4">
-          <div className="flex items-center gap-2.5">
-            <div className="p-2 rounded-xl bg-cyan-500/10 text-cyan-500">
-              <Shield className="w-4 h-4" />
-            </div>
-            <div>
-              <h3 className="text-sm sm:text-base font-black text-slate-900 dark:text-white">
-                {t('profile.settingsSection.title')}
-              </h3>
-              <p className="text-xs text-slate-500 dark:text-slate-400">
-                {t('profile.subtitle')}
-              </p>
-            </div>
-          </div>
+      <div className="space-y-4">
+        <div className="flex items-center justify-between">
+          <h3 className="text-sm font-bold text-slate-900 dark:text-white uppercase tracking-wider text-xs">
+            {t('profile.settingsTitle')}
+          </h3>
         </div>
 
-        <div className="space-y-4 text-xs">
-          {/* 3.1 Language Selection */}
-          <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-3 p-4 rounded-2xl bg-slate-50 dark:bg-slate-950 border border-slate-200 dark:border-slate-800/80">
+        <div className="bg-white dark:bg-slate-900 border border-slate-200 dark:border-slate-800 rounded-3xl overflow-hidden divide-y divide-slate-100 dark:divide-slate-800/80 shadow-sm">
+          {/* Language Switch */}
+          <div className="p-4 sm:p-5 flex items-center justify-between">
             <div className="flex items-center gap-3">
-              <div className="p-2 rounded-xl bg-slate-200 dark:bg-slate-800 text-cyan-500">
-                <Globe className="w-4 h-4" />
+              <div className="p-2.5 rounded-2xl bg-blue-500/10 text-blue-500">
+                <Globe className="w-5 h-5" />
               </div>
               <div>
-                <div className="font-bold text-slate-900 dark:text-white">
-                  {t('profile.settingsSection.languageTitle')}
-                </div>
-                <div className="text-[11px] text-slate-500 dark:text-slate-400">
-                  {t('profile.settingsSection.languageDesc')}
-                </div>
+                <h4 className="text-xs sm:text-sm font-bold text-slate-900 dark:text-white">
+                  {t('profile.language')}
+                </h4>
+                <p className="text-[11px] text-slate-500 dark:text-slate-400">
+                  {language === 'mm' ? 'မြန်မာဘာသာ (Unicode)' : 'English (International)'}
+                </p>
               </div>
             </div>
-
-            <div className="inline-flex rounded-xl bg-slate-200 dark:bg-slate-800 p-1 border border-slate-300 dark:border-slate-700">
-              <button
-                type="button"
-                onClick={() => setLanguage('en')}
-                className={`px-3.5 py-1.5 rounded-lg text-xs font-bold transition cursor-pointer ${
-                  language === 'en'
-                    ? 'bg-cyan-500 text-slate-950 shadow-sm font-black'
-                    : 'text-slate-600 dark:text-slate-300 hover:text-white'
-                }`}
-              >
-                English (ENG)
-              </button>
+            <div className="flex bg-slate-100 dark:bg-slate-800 p-1 rounded-2xl border border-slate-200 dark:border-slate-700">
               <button
                 type="button"
                 onClick={() => setLanguage('mm')}
-                className={`px-3.5 py-1.5 rounded-lg text-xs font-bold transition cursor-pointer ${
+                className={`px-3 py-1.5 rounded-xl text-xs font-bold transition cursor-pointer ${
                   language === 'mm'
-                    ? 'bg-cyan-500 text-slate-950 shadow-sm font-black'
-                    : 'text-slate-600 dark:text-slate-300 hover:text-white'
+                    ? 'bg-cyan-500 text-slate-950 shadow-sm'
+                    : 'text-slate-600 dark:text-slate-400 hover:text-slate-900 dark:hover:text-white'
                 }`}
               >
-                မြန်မာစာ (MM)
+                🇲🇲 MM
+              </button>
+              <button
+                type="button"
+                onClick={() => setLanguage('en')}
+                className={`px-3 py-1.5 rounded-xl text-xs font-bold transition cursor-pointer ${
+                  language === 'en'
+                    ? 'bg-cyan-500 text-slate-950 shadow-sm'
+                    : 'text-slate-600 dark:text-slate-400 hover:text-slate-900 dark:hover:text-white'
+                }`}
+              >
+                🇺🇸 EN
               </button>
             </div>
           </div>
 
-          {/* 3.2 Theme Toggle */}
-          <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-3 p-4 rounded-2xl bg-slate-50 dark:bg-slate-950 border border-slate-200 dark:border-slate-800/80">
+          {/* Theme Switch */}
+          <div className="p-4 sm:p-5 flex items-center justify-between">
             <div className="flex items-center gap-3">
-              <div className="p-2 rounded-xl bg-slate-200 dark:bg-slate-800 text-amber-400">
-                {actualTheme === 'dark' ? <Moon className="w-4 h-4 text-cyan-400" /> : <Sun className="w-4 h-4 text-amber-500" />}
+              <div className="p-2.5 rounded-2xl bg-purple-500/10 text-purple-500">
+                {actualTheme === 'dark' ? <Moon className="w-5 h-5" /> : <Sun className="w-5 h-5" />}
               </div>
               <div>
-                <div className="font-bold text-slate-900 dark:text-white">
-                  {t('profile.settingsSection.themeTitle')}
-                </div>
-                <div className="text-[11px] text-slate-500 dark:text-slate-400">
-                  {t('profile.settingsSection.themeDesc')}
-                </div>
+                <h4 className="text-xs sm:text-sm font-bold text-slate-900 dark:text-white">
+                  {t('profile.theme')}
+                </h4>
+                <p className="text-[11px] text-slate-500 dark:text-slate-400">
+                  {actualTheme === 'dark' ? (isMM ? 'အမှောင်ပုံစံ (Dark)' : 'Dark Theme') : (isMM ? 'အလင်းပုံစံ (Light)' : 'Light Theme')}
+                </p>
               </div>
             </div>
-
-            <div className="inline-flex rounded-xl bg-slate-200 dark:bg-slate-800 p-1 border border-slate-300 dark:border-slate-700">
+            <div className="flex bg-slate-100 dark:bg-slate-800 p-1 rounded-2xl border border-slate-200 dark:border-slate-700">
               <button
                 type="button"
                 onClick={() => setTheme('light')}
-                className={`px-3.5 py-1.5 rounded-lg text-xs font-bold transition flex items-center gap-1.5 cursor-pointer ${
+                className={`px-3 py-1.5 rounded-xl text-xs font-bold transition flex items-center gap-1.5 cursor-pointer ${
                   actualTheme === 'light'
-                    ? 'bg-amber-400 text-slate-950 shadow-sm font-black'
-                    : 'text-slate-600 dark:text-slate-300 hover:text-white'
+                    ? 'bg-cyan-500 text-slate-950 shadow-sm'
+                    : 'text-slate-600 dark:text-slate-400 hover:text-slate-900 dark:hover:text-white'
                 }`}
               >
                 <Sun className="w-3.5 h-3.5" />
-                <span>{isMM ? 'Light မုဒ်' : 'Light'}</span>
+                <span className="hidden sm:inline">Light</span>
               </button>
               <button
                 type="button"
                 onClick={() => setTheme('dark')}
-                className={`px-3.5 py-1.5 rounded-lg text-xs font-bold transition flex items-center gap-1.5 cursor-pointer ${
+                className={`px-3 py-1.5 rounded-xl text-xs font-bold transition flex items-center gap-1.5 cursor-pointer ${
                   actualTheme === 'dark'
-                    ? 'bg-cyan-500 text-slate-950 shadow-sm font-black'
-                    : 'text-slate-600 dark:text-slate-300 hover:text-white'
+                    ? 'bg-cyan-500 text-slate-950 shadow-sm'
+                    : 'text-slate-600 dark:text-slate-400 hover:text-slate-900 dark:hover:text-white'
                 }`}
               >
                 <Moon className="w-3.5 h-3.5" />
-                <span>{isMM ? 'Dark မုဒ်' : 'Dark'}</span>
+                <span className="hidden sm:inline">Dark</span>
               </button>
             </div>
           </div>
 
-          {/* 3.3 Currency Selection */}
-          <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-3 p-4 rounded-2xl bg-slate-50 dark:bg-slate-950 border border-slate-200 dark:border-slate-800/80">
-            <div className="flex items-center gap-3">
-              <div className="p-2 rounded-xl bg-slate-200 dark:bg-slate-800 text-emerald-400">
-                <Coins className="w-4 h-4" />
-              </div>
-              <div>
-                <div className="font-bold text-slate-900 dark:text-white">
-                  {t('profile.settingsSection.currencyTitle')}
+          {/* Account Logout Action */}
+          {authUser && (
+            <div className="p-4 sm:p-5 flex items-center justify-between">
+              <div className="flex items-center gap-3">
+                <div className="p-2.5 rounded-2xl bg-rose-500/10 text-rose-500">
+                  <LogOut className="w-5 h-5" />
                 </div>
-                <div className="text-[11px] text-slate-500 dark:text-slate-400">
-                  {t('profile.settingsSection.currencyDesc')}
+                <div>
+                  <h4 className="text-xs sm:text-sm font-bold text-rose-600 dark:text-rose-400">
+                    {isMM ? 'အကောင့်မှ ထွက်မည်' : 'Sign Out Account'}
+                  </h4>
+                  <p className="text-[11px] text-slate-500 dark:text-slate-400">
+                    {authUser.email}
+                  </p>
                 </div>
               </div>
-            </div>
-
-            <div className="inline-flex rounded-xl bg-slate-200 dark:bg-slate-800 p-1 border border-slate-300 dark:border-slate-700">
               <button
                 type="button"
-                onClick={() => setCurrency('MMK')}
-                className={`px-3.5 py-1.5 rounded-lg text-xs font-bold transition cursor-pointer ${
-                  currency === 'MMK'
-                    ? 'bg-emerald-500 text-slate-950 shadow-sm font-black'
-                    : 'text-slate-600 dark:text-slate-300 hover:text-white'
-                }`}
+                onClick={() => setShowLogoutConfirm(true)}
+                className="px-4 py-2 rounded-2xl bg-rose-500/10 hover:bg-rose-500/20 text-rose-600 dark:text-rose-400 font-bold text-xs border border-rose-500/20 transition cursor-pointer"
               >
-                🇲🇲 MMK (ကျပ်)
-              </button>
-              <button
-                type="button"
-                onClick={() => setCurrency('THB')}
-                className={`px-3.5 py-1.5 rounded-lg text-xs font-bold transition cursor-pointer ${
-                  currency === 'THB'
-                    ? 'bg-emerald-500 text-slate-950 shadow-sm font-black'
-                    : 'text-slate-600 dark:text-slate-300 hover:text-white'
-                }`}
-              >
-                🇹🇭 THB (ဘတ်)
+                {isMM ? 'ထွက်မည်' : 'Sign Out'}
               </button>
             </div>
-          </div>
-
-          {/* 3.4 Security Settings Row */}
-          <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-3 p-4 rounded-2xl bg-slate-50 dark:bg-slate-950 border border-slate-200 dark:border-slate-800/80">
-            <div className="flex items-center gap-3">
-              <div className="p-2 rounded-xl bg-slate-200 dark:bg-slate-800 text-purple-400">
-                <Lock className="w-4 h-4" />
-              </div>
-              <div>
-                <div className="font-bold text-slate-900 dark:text-white flex items-center gap-1.5">
-                  <span>{t('profile.settingsSection.securityTitle')}</span>
-                  <span className="text-[10px] font-bold px-1.5 py-0.2 rounded bg-emerald-500/20 text-emerald-500">
-                    2FA Active
-                  </span>
-                </div>
-                <div className="text-[11px] text-slate-500 dark:text-slate-400">
-                  {t('profile.settingsSection.securityDesc')}
-                </div>
-              </div>
-            </div>
-
-            <button
-              type="button"
-              onClick={() => onOpenSettings('security')}
-              className="px-4 py-2 rounded-xl bg-slate-200 dark:bg-slate-800 hover:bg-slate-300 dark:hover:bg-slate-700 text-slate-800 dark:text-slate-200 text-xs font-bold transition flex items-center justify-center gap-1.5 cursor-pointer shrink-0"
-            >
-              <Key className="w-3.5 h-3.5 text-cyan-500" />
-              <span>{t('profile.settingsSection.openSecurityBtn')}</span>
-              <ChevronRight className="w-3.5 h-3.5" />
-            </button>
-          </div>
+          )}
         </div>
       </div>
 
       {/* ======================================================== */}
-      {/* 4. AUTH & LOG OUT SECTION                                */}
+      {/* 5. EDIT PROFILE MODAL                                    */}
       {/* ======================================================== */}
-      <div className="pt-2">
-        {authUser ? (
-          showLogoutConfirm ? (
-            <div className="p-5 rounded-3xl bg-rose-500/10 border border-rose-500/30 space-y-3 animate-in fade-in">
-              <p className="text-xs font-bold text-rose-500 dark:text-rose-400 text-center">
-                {t('profile.logoutConfirm')}
-              </p>
-              <div className="flex items-center justify-center gap-3">
+      {isEditProfileOpen && (
+        <div className="fixed inset-0 z-50 bg-black/70 backdrop-blur-sm flex items-center justify-center p-4 overflow-y-auto animate-in fade-in duration-200">
+          <div className="bg-white dark:bg-slate-900 border border-slate-200 dark:border-slate-800 rounded-3xl w-full max-w-lg overflow-hidden shadow-2xl">
+            {/* Modal Header */}
+            <div className="p-5 sm:p-6 bg-gradient-to-r from-slate-900 via-cyan-950 to-slate-900 border-b border-slate-800 text-white flex items-center justify-between">
+              <div className="flex items-center gap-2.5">
+                <div className="p-2 rounded-xl bg-cyan-500/20 text-cyan-400 border border-cyan-500/30">
+                  <Edit3 className="w-5 h-5" />
+                </div>
+                <div>
+                  <h3 className="text-base font-black text-white">
+                    {isMM ? 'ပရိုဖိုင် အချက်အလက်များ ပြင်ဆင်မည်' : 'Edit User Profile'}
+                  </h3>
+                  <p className="text-xs text-cyan-200/80">
+                    {isMM ? 'အမည်ရင်း၊ ဖုန်းနံပါတ်နှင့် ပရိုဖိုင်ပုံ ပြင်ဆင်ပါ' : 'Update your name, contact phone, and avatar'}
+                  </p>
+                </div>
+              </div>
+              <button
+                type="button"
+                onClick={() => setIsEditProfileOpen(false)}
+                className="p-2 rounded-xl bg-white/10 hover:bg-white/20 text-slate-300 hover:text-white transition cursor-pointer"
+              >
+                <X className="w-5 h-5" />
+              </button>
+            </div>
+
+            {/* Modal Body */}
+            <form onSubmit={handleSaveProfile} className="p-5 sm:p-6 space-y-4">
+              {editFeedback && (
+                <div
+                  className={`p-3.5 rounded-2xl text-xs font-semibold flex items-center gap-2.5 ${
+                    editFeedback.type === 'success'
+                      ? 'bg-emerald-500/10 border border-emerald-500/30 text-emerald-600 dark:text-emerald-400'
+                      : 'bg-rose-500/10 border border-rose-500/30 text-rose-600 dark:text-rose-400'
+                  }`}
+                >
+                  {editFeedback.type === 'success' ? (
+                    <CheckCircle2 className="w-4 h-4 shrink-0" />
+                  ) : (
+                    <AlertCircle className="w-4 h-4 shrink-0" />
+                  )}
+                  <span>{editFeedback.message}</span>
+                </div>
+              )}
+
+              {/* Avatar Preview & Change */}
+              <div className="flex items-center gap-4 p-4 rounded-2xl bg-slate-50 dark:bg-slate-950 border border-slate-200 dark:border-slate-800">
+                <div className="relative shrink-0">
+                  {editAvatarUrl.trim() ? (
+                    <img
+                      src={editAvatarUrl.trim()}
+                      alt="Avatar Preview"
+                      className="w-16 h-16 rounded-2xl object-cover border-2 border-cyan-500"
+                    />
+                  ) : (
+                    <div className="w-16 h-16 rounded-2xl bg-gradient-to-br from-cyan-600 to-indigo-700 text-white font-black text-2xl flex items-center justify-center border-2 border-cyan-400 select-none">
+                      {(editFullName || authUser?.fullName || 'G').charAt(0).toUpperCase()}
+                    </div>
+                  )}
+                </div>
+                <div className="flex-1 space-y-1.5">
+                  <span className="text-xs font-bold text-slate-700 dark:text-slate-300 block">
+                    {isMM ? 'ပရိုဖိုင်ပုံ ရွေးချယ်မှု' : 'Profile Picture'}
+                  </span>
+                  <div className="flex items-center gap-2 flex-wrap">
+                    <button
+                      type="button"
+                      onClick={() => setEditAvatarUrl('')}
+                      className="px-2.5 py-1 rounded-xl bg-slate-200 dark:bg-slate-800 hover:bg-slate-300 dark:hover:bg-slate-700 text-[11px] font-bold text-slate-700 dark:text-slate-300 transition cursor-pointer"
+                    >
+                      {isMM ? 'Default အက္ခရာသုံးမည်' : 'Use Letter Avatar'}
+                    </button>
+                    <button
+                      type="button"
+                      onClick={() => setEditAvatarUrl('https://images.unsplash.com/photo-1566492031773-4f4e44671857?w=300&auto=format&fit=crop&q=80')}
+                      className="px-2.5 py-1 rounded-xl bg-cyan-500/10 hover:bg-cyan-500/20 text-cyan-600 dark:text-cyan-400 text-[11px] font-bold transition cursor-pointer"
+                    >
+                      Gamer 1
+                    </button>
+                    <button
+                      type="button"
+                      onClick={() => setEditAvatarUrl('https://images.unsplash.com/photo-1535713875002-d1d0cf377fde?w=300&auto=format&fit=crop&q=80')}
+                      className="px-2.5 py-1 rounded-xl bg-cyan-500/10 hover:bg-cyan-500/20 text-cyan-600 dark:text-cyan-400 text-[11px] font-bold transition cursor-pointer"
+                    >
+                      Gamer 2
+                    </button>
+                  </div>
+                </div>
+              </div>
+
+              {/* Custom Avatar URL input */}
+              <div className="space-y-1.5">
+                <label className="text-xs font-bold text-slate-700 dark:text-slate-300">
+                  {isMM ? 'ပုံလိပ်စာ URL (ရွေးချယ်ရန်)' : 'Custom Avatar Image URL (Optional)'}
+                </label>
+                <input
+                  type="url"
+                  value={editAvatarUrl}
+                  onChange={(e) => setEditAvatarUrl(e.target.value)}
+                  placeholder="https://images.unsplash.com/..."
+                  className="w-full px-3.5 py-2.5 bg-slate-50 dark:bg-slate-950 border border-slate-200 dark:border-slate-800 rounded-2xl text-xs sm:text-sm text-slate-900 dark:text-white placeholder-slate-400 focus:outline-none focus:border-cyan-500 transition font-mono"
+                />
+              </div>
+
+              {/* Full Name input */}
+              <div className="space-y-1.5">
+                <label className="text-xs font-bold text-slate-700 dark:text-slate-300 flex items-center gap-1.5">
+                  <User className="w-3.5 h-3.5 text-cyan-500" />
+                  <span>{isMM ? 'အမည်ရင်း (Full Name)' : 'Full Name'} *</span>
+                </label>
+                <input
+                  type="text"
+                  required
+                  value={editFullName}
+                  onChange={(e) => setEditFullName(e.target.value)}
+                  placeholder="Ko Kyaw Zayar"
+                  className="w-full px-3.5 py-2.5 bg-slate-50 dark:bg-slate-950 border border-slate-200 dark:border-slate-800 rounded-2xl text-xs sm:text-sm text-slate-900 dark:text-white placeholder-slate-400 focus:outline-none focus:border-cyan-500 transition"
+                />
+              </div>
+
+              {/* Phone input */}
+              <div className="space-y-1.5">
+                <label className="text-xs font-bold text-slate-700 dark:text-slate-300 flex items-center gap-1.5">
+                  <Phone className="w-3.5 h-3.5 text-emerald-500" />
+                  <span>{isMM ? 'ဖုန်းနံပါတ် (Contact Phone)' : 'Contact Phone Number'}</span>
+                </label>
+                <input
+                  type="tel"
+                  value={editPhone}
+                  onChange={(e) => setEditPhone(e.target.value)}
+                  placeholder="09450012345"
+                  className="w-full px-3.5 py-2.5 bg-slate-50 dark:bg-slate-950 border border-slate-200 dark:border-slate-800 rounded-2xl text-xs sm:text-sm text-slate-900 dark:text-white placeholder-slate-400 focus:outline-none focus:border-cyan-500 transition font-mono"
+                />
+              </div>
+
+              {/* Modal Buttons */}
+              <div className="flex items-center justify-end gap-3 pt-3">
                 <button
                   type="button"
-                  onClick={() => setShowLogoutConfirm(false)}
-                  className="px-4 py-2 rounded-xl bg-slate-200 dark:bg-slate-800 text-slate-700 dark:text-slate-300 text-xs font-bold hover:bg-slate-300 dark:hover:bg-slate-700 transition cursor-pointer"
+                  onClick={() => setIsEditProfileOpen(false)}
+                  className="px-4 py-2.5 rounded-2xl bg-slate-100 dark:bg-slate-800 text-slate-700 dark:text-slate-300 text-xs font-bold hover:bg-slate-200 dark:hover:bg-slate-700 transition cursor-pointer"
                 >
-                  {isMM ? 'မထွက်ပါ' : 'Cancel'}
+                  {isMM ? 'မလုပ်တော့ပါ' : 'Cancel'}
                 </button>
                 <button
-                  type="button"
-                  onClick={handleLogout}
-                  className="px-5 py-2 rounded-xl bg-rose-600 hover:bg-rose-500 text-white text-xs font-black shadow-lg shadow-rose-600/30 transition cursor-pointer"
+                  type="submit"
+                  disabled={isSavingProfile}
+                  className="px-6 py-2.5 rounded-2xl bg-cyan-500 hover:bg-cyan-400 active:scale-95 text-slate-950 font-black text-xs shadow-md shadow-cyan-500/20 transition flex items-center gap-2 cursor-pointer disabled:opacity-50"
                 >
-                  {isMM ? 'သေချာသည်၊ ထွက်မည်' : 'Yes, Log Out'}
+                  {isSavingProfile ? (
+                    <span className="flex items-center gap-1.5">
+                      <span className="w-3.5 h-3.5 border-2 border-slate-950 border-t-transparent rounded-full animate-spin" />
+                      <span>{isMM ? 'သိမ်းဆည်းနေသည်...' : 'Saving...'}</span>
+                    </span>
+                  ) : (
+                    <span>{isMM ? 'ပြင်ဆင်မှု သိမ်းမည်' : 'Save Changes'}</span>
+                  )}
                 </button>
               </div>
-            </div>
-          ) : (
-            <button
-              type="button"
-              onClick={() => setShowLogoutConfirm(true)}
-              className="w-full py-3.5 rounded-2xl bg-white dark:bg-slate-900 border border-rose-200 dark:border-rose-900/40 text-rose-600 dark:text-rose-400 hover:bg-rose-50 dark:hover:bg-rose-950/40 text-xs sm:text-sm font-bold transition flex items-center justify-center gap-2 cursor-pointer shadow-sm active:scale-98"
-            >
-              <LogOut className="w-4 h-4" />
-              <span>{t('profile.logout')}</span>
-            </button>
-          )
-        ) : (
-          <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
-            <button
-              type="button"
-              onClick={() => onOpenAuthModal && onOpenAuthModal('signin')}
-              className="py-3.5 px-4 rounded-2xl bg-cyan-500 hover:bg-cyan-400 text-slate-950 font-black text-xs sm:text-sm shadow-md shadow-cyan-500/20 transition flex items-center justify-center gap-2 cursor-pointer active:scale-98"
-            >
-              <LogIn className="w-4 h-4" />
-              <span>{isMM ? 'အကောင့်ဝင်မည်' : 'Sign In'}</span>
-            </button>
-            <button
-              type="button"
-              onClick={() => onOpenAuthModal && onOpenAuthModal('signup')}
-              className="py-3.5 px-4 rounded-2xl bg-slate-200 dark:bg-slate-800 hover:bg-slate-300 dark:hover:bg-slate-700 text-slate-800 dark:text-slate-200 font-bold text-xs sm:text-sm transition flex items-center justify-center gap-2 cursor-pointer active:scale-98"
-            >
-              <Sparkles className="w-4 h-4 text-emerald-500" />
-              <span>{isMM ? 'အကောင့်သစ်ဖွင့်မည်' : 'Sign Up (Create Account)'}</span>
-            </button>
+            </form>
           </div>
-        )}
-      </div>
+        </div>
+      )}
+
+      {/* ======================================================== */}
+      {/* 6. LOGOUT CONFIRMATION MODAL                             */}
+      {/* ======================================================== */}
+      {showLogoutConfirm && (
+        <div className="fixed inset-0 z-50 bg-black/60 backdrop-blur-sm flex items-center justify-center p-4">
+          <div className="bg-white dark:bg-slate-900 border border-slate-200 dark:border-slate-800 rounded-3xl p-6 max-w-sm w-full space-y-4 shadow-2xl text-center">
+            <div className="w-12 h-12 rounded-2xl bg-rose-500/10 text-rose-500 flex items-center justify-center mx-auto">
+              <LogOut className="w-6 h-6" />
+            </div>
+            <div className="space-y-1">
+              <h4 className="text-base font-bold text-slate-900 dark:text-white">
+                {isMM ? 'အကောင့်မှ ထွက်မှာ သေချာပါသလား?' : 'Sign out of GameZay?'}
+              </h4>
+              <p className="text-xs text-slate-500 dark:text-slate-400">
+                {isMM ? 'ထွက်ပြီးပါက Login ပြန်ဝင်ရန် လိုအပ်မည်ဖြစ်ပါသည်။' : 'You will need to sign in again to access your escrow dashboard.'}
+              </p>
+            </div>
+            <div className="flex items-center justify-center gap-3 pt-2">
+              <button
+                type="button"
+                onClick={() => setShowLogoutConfirm(false)}
+                className="flex-1 py-2.5 rounded-2xl bg-slate-100 dark:bg-slate-800 hover:bg-slate-200 dark:hover:bg-slate-700 text-slate-800 dark:text-slate-200 text-xs font-bold transition cursor-pointer"
+              >
+                {isMM ? 'မထွက်ပါ' : 'Cancel'}
+              </button>
+              <button
+                type="button"
+                onClick={handleLogout}
+                className="flex-1 py-2.5 rounded-2xl bg-rose-600 hover:bg-rose-500 text-white text-xs font-bold shadow-md shadow-rose-600/30 transition cursor-pointer"
+              >
+                {isMM ? 'သေချာသည်' : 'Sign Out'}
+              </button>
+            </div>
+          </div>
+        </div>
+      )}
     </div>
   );
 };
-
-export default UserProfileView;

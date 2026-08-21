@@ -95,29 +95,20 @@ export interface SupabaseUserProfile {
 }
 
 export const DEFAULT_USER_PROFILE: SupabaseUserProfile = {
-  id: 'current-user-1',
-  name: 'Ko Min Thant',
-  username: 'KyawZin_Gamer99',
-  email: 'gamezaymm@gmail.com',
-  phone: '09798889901',
-  kycStatus: 'VERIFIED',
-  isProMerchant: true,
-  completedSalesCount: 14,
+  id: 'guest-user',
+  name: 'New Gamer',
+  username: 'gamer',
+  email: '',
+  phone: '',
+  kycStatus: 'NOT_SUBMITTED',
+  isProMerchant: false,
+  completedSalesCount: 0,
   activeDisputesCount: 0,
-  balanceMMK: 850000,
-  heldInEscrowMMK: 320000,
-  sellerRating: 4.95,
-  totalRatings: 38,
-  subscription: {
-    isActive: true,
-    plan: 'PRO_MONTHLY',
-    subscribedAt: '2026-08-01T00:00:00Z',
-    expiresAt: '2026-09-20T00:00:00Z',
-    bumpQuotaRemaining: 18,
-    bumpQuotaTotal: 20,
-    monthlyFeeMMK: 25000,
-    autoRenew: true,
-  },
+  balanceMMK: 0,
+  heldInEscrowMMK: 0,
+  sellerRating: 5.0,
+  totalRatings: 0,
+  subscription: undefined,
 };
 
 /**
@@ -317,6 +308,45 @@ export async function updateProfileKycStatus(
   } catch (err: any) {
     console.warn('Supabase KYC update exception:', err);
     return { success: false, error: err?.message || 'Failed to update KYC status' };
+  }
+}
+
+/**
+ * Update User Profile (full_name, phone, avatar_url) in Supabase `profiles` table
+ */
+export async function updateUserProfile(
+  userId: string,
+  updates: {
+    fullName?: string;
+    phone?: string;
+    avatarUrl?: string;
+  }
+): Promise<{ success: boolean; error?: string }> {
+  if (!isSupabaseConfigured || !supabase) {
+    return { success: true };
+  }
+
+  try {
+    const payload: any = {
+      updated_at: new Date().toISOString(),
+    };
+    if (updates.fullName !== undefined) payload.full_name = updates.fullName.trim();
+    if (updates.phone !== undefined) payload.phone = updates.phone.trim();
+    if (updates.avatarUrl !== undefined) payload.avatar_url = updates.avatarUrl.trim();
+
+    const { error } = await supabase
+      .from('profiles')
+      .update(payload)
+      .eq('id', userId);
+
+    if (error) {
+      console.warn('Supabase profile update note:', error.message);
+      return { success: false, error: error.message };
+    }
+    return { success: true };
+  } catch (err: any) {
+    console.warn('Supabase profile update exception:', err);
+    return { success: false, error: err?.message || 'Failed to update profile' };
   }
 }
 

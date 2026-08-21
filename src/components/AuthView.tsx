@@ -1,5 +1,6 @@
 import React, { useState } from 'react';
 import { useLanguage } from '../context/LanguageContext';
+import { useTheme } from '../context/ThemeContext';
 import { signUpWithSupabase, signInWithSupabase, isSupabaseConfigured, resetPasswordWithSupabase } from '../lib/supabaseClient';
 import {
   X,
@@ -22,6 +23,11 @@ import {
   HelpCircle,
   LogIn,
   UserPlus,
+  Globe,
+  Sun,
+  Moon,
+  Shield,
+  Check,
 } from 'lucide-react';
 
 export type AuthScreenMode = 'signin' | 'signup' | 'forgot';
@@ -35,15 +41,18 @@ interface AuthViewProps {
     username: string;
     phone?: string;
   }) => void;
-  onBackToHome: () => void;
+  onBackToHome?: () => void;
+  isMandatoryLanding?: boolean;
 }
 
 export const AuthView: React.FC<AuthViewProps> = ({
   initialMode = 'signin',
   onAuthSuccess,
   onBackToHome,
+  isMandatoryLanding = false,
 }) => {
-  const { isMM, t } = useLanguage();
+  const { isMM, t, language, setLanguage } = useLanguage();
+  const { theme, setTheme, actualTheme } = useTheme();
   const [mode, setMode] = useState<AuthScreenMode>(initialMode);
 
   // Sync mode if initialMode prop updates
@@ -278,28 +287,51 @@ export const AuthView: React.FC<AuthViewProps> = ({
         
         {/* Top Header Banner */}
         <div className="p-6 sm:p-8 bg-gradient-to-r from-slate-900 via-cyan-950 to-slate-900 border-b border-slate-800 text-white relative">
-          <button
-            type="button"
-            onClick={onBackToHome}
-            className="absolute top-5 left-5 p-2 rounded-xl bg-white/10 hover:bg-white/20 text-slate-200 hover:text-white transition flex items-center gap-1.5 text-xs font-bold cursor-pointer"
-            title={isMM ? 'ပင်မသို့ ပြန်သွားမည်' : 'Back to Home'}
-          >
-            <ArrowLeft className="w-4 h-4" />
-            <span className="hidden sm:inline">{isMM ? 'ပင်မသို့' : 'Home'}</span>
-          </button>
+          {!isMandatoryLanding && onBackToHome && (
+            <button
+              type="button"
+              onClick={onBackToHome}
+              className="absolute top-5 left-5 p-2 rounded-xl bg-white/10 hover:bg-white/20 text-slate-200 hover:text-white transition flex items-center gap-1.5 text-xs font-bold cursor-pointer"
+              title={isMM ? 'ပင်မသို့ ပြန်သွားမည်' : 'Back to Home'}
+            >
+              <ArrowLeft className="w-4 h-4" />
+              <span className="hidden sm:inline">{isMM ? 'ပင်မသို့' : 'Home'}</span>
+            </button>
+          )}
 
-          <div className="text-center pt-2 sm:pt-0">
-            <div className="inline-flex p-3 rounded-2xl bg-cyan-500/20 text-cyan-400 border border-cyan-500/30 mb-3 shadow-lg shadow-cyan-500/10">
-              <Gamepad2 className="w-8 h-8" />
+          {/* Top Right Language & Theme Controls */}
+          <div className="absolute top-5 right-5 flex items-center gap-1.5">
+            <button
+              type="button"
+              onClick={() => setLanguage(language === 'mm' ? 'en' : 'mm')}
+              className="px-2.5 py-1 rounded-xl bg-white/10 hover:bg-white/20 text-slate-200 text-[11px] font-bold transition flex items-center gap-1 cursor-pointer"
+              title="Toggle Language"
+            >
+              <Globe className="w-3.5 h-3.5 text-cyan-400" />
+              <span>{language === 'mm' ? 'MM' : 'EN'}</span>
+            </button>
+            <button
+              type="button"
+              onClick={() => setTheme(actualTheme === 'dark' ? 'light' : 'dark')}
+              className="p-1.5 rounded-xl bg-white/10 hover:bg-white/20 text-slate-200 transition cursor-pointer"
+              title="Toggle Theme"
+            >
+              {actualTheme === 'dark' ? <Moon className="w-3.5 h-3.5 text-yellow-400" /> : <Sun className="w-3.5 h-3.5 text-amber-400" />}
+            </button>
+          </div>
+
+          <div className="text-center pt-4 sm:pt-2">
+            <div className="inline-flex p-3.5 rounded-2xl bg-cyan-500/20 text-cyan-400 border border-cyan-500/30 mb-3 shadow-lg shadow-cyan-500/10">
+              <Gamepad2 className="w-9 h-9" />
             </div>
-            <h1 className="text-xl sm:text-2xl font-black tracking-tight text-white">
+            <h1 className="text-2xl sm:text-3xl font-black tracking-tight text-white">
               GameZay<span className="text-cyan-400">.MM</span>
             </h1>
-            <p className="text-xs sm:text-sm text-cyan-200/80 mt-1 max-w-sm mx-auto">
+            <p className="text-xs sm:text-sm text-cyan-200/80 mt-1.5 max-w-sm mx-auto">
               {mode === 'signin'
                 ? isMM
                   ? 'လုံခြုံစိတ်ချရသော မြန်မာ့ဂိမ်းအကောင့် အက်စခရိုးစျေးကွက်'
-                  : 'Secure Escrow Marketplace for Myanmar Gamers'
+                  : '100% Escrow-Protected Marketplace for Myanmar Gamers'
                 : mode === 'signup'
                 ? isMM
                   ? 'အကောင့်သစ်ဖွင့်ပြီး လုံခြုံစွာ ရောင်းဝယ်လိုက်ပါ'
