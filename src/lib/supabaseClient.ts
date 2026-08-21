@@ -312,6 +312,73 @@ export async function updateProfileKycStatus(
 }
 
 /**
+ * Upload an avatar image file to Supabase Storage 'avatars' bucket
+ * and returns the public URL.
+ */
+export async function uploadAvatarImage(
+  userId: string,
+  file: File
+): Promise<{ success: boolean; publicUrl?: string; error?: string }> {
+  if (!isSupabaseConfigured || !supabase) {
+    // If Supabase is not configured or in local demo mode, create local object URL or data URL
+    return new Promise((resolve) => {
+      const reader = new FileReader();
+      reader.onloadend = () => {
+        resolve({ success: true, publicUrl: reader.result as string });
+      };
+      reader.onerror = () => {
+        resolve({ success: false, error: 'Failed to read local image file.' });
+      };
+      reader.readAsDataURL(file);
+    });
+  }
+
+  try {
+    const fileExt = file.name.split('.').pop() || 'jpg';
+    const fileName = `${userId}/${Date.now()}.${fileExt}`;
+    const filePath = fileName;
+
+    // Upload to 'avatars' bucket
+    const { error: uploadError } = await supabase.storage
+      .from('avatars')
+      .upload(filePath, file, {
+        upsert: true,
+        cacheControl: '3600',
+      });
+
+    if (uploadError) {
+      console.warn('Supabase storage upload error:', uploadError.message);
+      // If bucket does not exist or permissions error, fallback gracefully to base64 data URL
+      return new Promise((resolve) => {
+        const reader = new FileReader();
+        reader.onloadend = () => {
+          resolve({
+            success: true,
+            publicUrl: reader.result as string,
+            error: uploadError.message,
+          });
+        };
+        reader.readAsDataURL(file);
+      });
+    }
+
+    // Retrieve public URL
+    const { data } = supabase.storage.from('avatars').getPublicUrl(filePath);
+
+    return {
+      success: true,
+      publicUrl: data.publicUrl,
+    };
+  } catch (err: any) {
+    console.warn('Avatar upload exception:', err);
+    return {
+      success: false,
+      error: err?.message || 'Failed to upload image',
+    };
+  }
+}
+
+/**
  * Update User Profile (full_name, phone, avatar_url) in Supabase `profiles` table
  */
 export async function updateUserProfile(

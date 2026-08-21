@@ -1,8 +1,8 @@
-import React, { useState } from 'react';
+import React, { useState, useRef } from 'react';
 import { useLanguage } from '../context/LanguageContext';
 import { useTheme } from '../context/ThemeContext';
 import { KycStatus, UserRole, MerchantSubscription, AuthUser } from '../types';
-import { updateUserProfile } from '../lib/supabaseClient';
+import { updateUserProfile, uploadAvatarImage } from '../lib/supabaseClient';
 import {
   ShieldCheck,
   ShieldAlert,
@@ -33,6 +33,9 @@ import {
   CheckCircle2,
   Layers,
   Award,
+  UploadCloud,
+  Loader2,
+  Image as ImageIcon,
 } from 'lucide-react';
 
 interface UserProfileViewProps {
@@ -72,7 +75,10 @@ export const UserProfileView: React.FC<UserProfileViewProps> = ({
   const [editPhone, setEditPhone] = useState(authUser?.phone || '');
   const [editAvatarUrl, setEditAvatarUrl] = useState(authUser?.avatarUrl || '');
   const [isSavingProfile, setIsSavingProfile] = useState(false);
+  const [isUploadingImage, setIsUploadingImage] = useState(false);
+  const [uploadProgressText, setUploadProgressText] = useState('');
   const [editFeedback, setEditFeedback] = useState<{ type: 'success' | 'error'; message: string } | null>(null);
+  const fileInputRef = useRef<HTMLInputElement>(null);
 
   // Sync edit form with authUser when opened
   const handleOpenEditModal = () => {
@@ -80,7 +86,65 @@ export const UserProfileView: React.FC<UserProfileViewProps> = ({
     setEditPhone(authUser?.phone || '');
     setEditAvatarUrl(authUser?.avatarUrl || '');
     setEditFeedback(null);
+    setIsUploadingImage(false);
+    setUploadProgressText('');
     setIsEditProfileOpen(true);
+  };
+
+  // Handle direct file upload to Supabase Storage 'avatars' bucket
+  const handleFileChange = async (e: React.ChangeEvent<HTMLInputElement>) => {
+    const file = e.target.files?.[0];
+    if (!file || !authUser) return;
+
+    // Validate file type
+    if (!file.type.startsWith('image/')) {
+      setEditFeedback({
+        type: 'error',
+        message: isMM ? 'ကျေးဇူးပြု၍ ဓာတ်ပုံဖိုင် (JPG/PNG/WEBP) ကိုသာ ရွေးချယ်ပါ' : 'Please select a valid image file (JPG, PNG, WEBP).',
+      });
+      return;
+    }
+
+    // Validate max file size (e.g. 5MB)
+    if (file.size > 5 * 1024 * 1024) {
+      setEditFeedback({
+        type: 'error',
+        message: isMM ? 'ဓာတ်ပုံဖိုင်ဆိုဒ်သည် 5MB ထက် မကျော်ရပါ' : 'Image file size must not exceed 5MB.',
+      });
+      return;
+    }
+
+    setIsUploadingImage(true);
+    setUploadProgressText(isMM ? 'ပုံတင်နေပါသည်...' : 'Uploading image to storage...');
+    setEditFeedback(null);
+
+    try {
+      const result = await uploadAvatarImage(authUser.id, file);
+      if (result.success && result.publicUrl) {
+        setEditAvatarUrl(result.publicUrl);
+        setEditFeedback({
+          type: 'success',
+          message: isMM ? 'ပုံတင်ပြီးပါပြီ! သိမ်းဆည်းရန် Save နှိပ်ပါ' : 'Photo uploaded successfully! Click Save to confirm.',
+        });
+      } else {
+        setEditFeedback({
+          type: 'error',
+          message: result.error || (isMM ? 'ဓာတ်ပုံတင်ခြင်း မအောင်မြင်ပါ' : 'Failed to upload image.'),
+        });
+      }
+    } catch (err: any) {
+      setEditFeedback({
+        type: 'error',
+        message: err?.message || (isMM ? 'ဓာတ်ပုံတင်ရာတွင် ချို့ယွင်းချက်ဖြစ်ပေါ်ပါသည်' : 'Error uploading image.'),
+      });
+    } finally {
+      setIsUploadingImage(false);
+      setUploadProgressText('');
+      // Reset input value so same file can be reselected if desired
+      if (fileInputRef.current) {
+        fileInputRef.current.value = '';
+      }
+    }
   };
 
   const handleSaveProfile = async (e: React.FormEvent) => {
@@ -655,63 +719,92 @@ export const UserProfileView: React.FC<UserProfileViewProps> = ({
                 </div>
               )}
 
-              {/* Avatar Preview & Change */}
-              <div className="flex items-center gap-4 p-4 rounded-2xl bg-slate-50 dark:bg-slate-950 border border-slate-200 dark:border-slate-800">
-                <div className="relative shrink-0">
-                  {editAvatarUrl.trim() ? (
-                    <img
-                      src={editAvatarUrl.trim()}
-                      alt="Avatar Preview"
-                      className="w-16 h-16 rounded-2xl object-cover border-2 border-cyan-500"
+              {/* Avatar Preview & Direct File Upload Section */}
+              <div className="p-4 rounded-2xl bg-slate-50 dark:bg-slate-950 border border-slate-200 dark:border-slate-800 space-y-3">
+                <div className="flex items-center gap-4">
+                  <div className="relative shrink-0">
+                    {editAvatarUrl.trim() ? (
+                      <img
+                        src={editAvatarUrl.trim()}
+                        alt="Avatar Preview"
+                        className="w-16 h-16 rounded-2xl object-cover border-2 border-cyan-500 shadow-sm"
+                      />
+                    ) : (
+                      <div className="w-16 h-16 rounded-2xl bg-gradient-to-br from-cyan-600 to-indigo-700 text-white font-black text-2xl flex items-center justify-center border-2 border-cyan-400 select-none shadow-sm">
+                        {(editFullName || authUser?.fullName || 'G').charAt(0).toUpperCase()}
+                      </div>
+                    )}
+                    {isUploadingImage && (
+                      <div className="absolute inset-0 bg-black/60 rounded-2xl flex items-center justify-center text-cyan-400">
+                        <Loader2 className="w-6 h-6 animate-spin" />
+                      </div>
+                    )}
+                  </div>
+
+                  <div className="flex-1 space-y-1.5">
+                    <span className="text-xs font-bold text-slate-800 dark:text-slate-200 flex items-center gap-1.5">
+                      <Camera className="w-3.5 h-3.5 text-cyan-500" />
+                      <span>{isMM ? 'ပရိုဖိုင်ဓာတ်ပုံ တင်ရန် (Supabase Storage)' : 'Profile Photo (Direct File Upload)'}</span>
+                    </span>
+
+                    {/* Hidden Native File Input */}
+                    <input
+                      ref={fileInputRef}
+                      type="file"
+                      accept="image/png, image/jpeg, image/jpg, image/webp"
+                      onChange={handleFileChange}
+                      className="hidden"
+                      id="avatar-file-upload"
+                      disabled={isUploadingImage || isSavingProfile}
                     />
-                  ) : (
-                    <div className="w-16 h-16 rounded-2xl bg-gradient-to-br from-cyan-600 to-indigo-700 text-white font-black text-2xl flex items-center justify-center border-2 border-cyan-400 select-none">
-                      {(editFullName || authUser?.fullName || 'G').charAt(0).toUpperCase()}
+
+                    <div className="flex items-center gap-2 flex-wrap pt-0.5">
+                      {/* Upload Button */}
+                      <button
+                        type="button"
+                        disabled={isUploadingImage || isSavingProfile}
+                        onClick={() => fileInputRef.current?.click()}
+                        className="px-3.5 py-1.5 rounded-xl bg-cyan-500 hover:bg-cyan-400 active:scale-95 text-slate-950 text-xs font-black transition flex items-center gap-1.5 shadow-sm shadow-cyan-500/20 cursor-pointer disabled:opacity-50"
+                      >
+                        {isUploadingImage ? (
+                          <>
+                            <Loader2 className="w-3.5 h-3.5 animate-spin" />
+                            <span>{isMM ? 'တင်နေသည်...' : 'Uploading...'}</span>
+                          </>
+                        ) : (
+                          <>
+                            <UploadCloud className="w-3.5 h-3.5" />
+                            <span>{isMM ? 'ဖိုင်ရွေးပြီး တင်မည်' : 'Choose Photo to Upload'}</span>
+                          </>
+                        )}
+                      </button>
+
+                      {/* Reset to Letter Avatar */}
+                      {editAvatarUrl.trim() && (
+                        <button
+                          type="button"
+                          disabled={isUploadingImage}
+                          onClick={() => setEditAvatarUrl('')}
+                          className="px-2.5 py-1.5 rounded-xl bg-slate-200 dark:bg-slate-800 hover:bg-slate-300 dark:hover:bg-slate-700 text-slate-700 dark:text-slate-300 text-xs font-bold transition cursor-pointer"
+                        >
+                          {isMM ? 'အက္ခရာပုံစံ ပြန်ထားမည်' : 'Use Letter Avatar'}
+                        </button>
+                      )}
                     </div>
-                  )}
-                </div>
-                <div className="flex-1 space-y-1.5">
-                  <span className="text-xs font-bold text-slate-700 dark:text-slate-300 block">
-                    {isMM ? 'ပရိုဖိုင်ပုံ ရွေးချယ်မှု' : 'Profile Picture'}
-                  </span>
-                  <div className="flex items-center gap-2 flex-wrap">
-                    <button
-                      type="button"
-                      onClick={() => setEditAvatarUrl('')}
-                      className="px-2.5 py-1 rounded-xl bg-slate-200 dark:bg-slate-800 hover:bg-slate-300 dark:hover:bg-slate-700 text-[11px] font-bold text-slate-700 dark:text-slate-300 transition cursor-pointer"
-                    >
-                      {isMM ? 'Default အက္ခရာသုံးမည်' : 'Use Letter Avatar'}
-                    </button>
-                    <button
-                      type="button"
-                      onClick={() => setEditAvatarUrl('https://images.unsplash.com/photo-1566492031773-4f4e44671857?w=300&auto=format&fit=crop&q=80')}
-                      className="px-2.5 py-1 rounded-xl bg-cyan-500/10 hover:bg-cyan-500/20 text-cyan-600 dark:text-cyan-400 text-[11px] font-bold transition cursor-pointer"
-                    >
-                      Gamer 1
-                    </button>
-                    <button
-                      type="button"
-                      onClick={() => setEditAvatarUrl('https://images.unsplash.com/photo-1535713875002-d1d0cf377fde?w=300&auto=format&fit=crop&q=80')}
-                      className="px-2.5 py-1 rounded-xl bg-cyan-500/10 hover:bg-cyan-500/20 text-cyan-600 dark:text-cyan-400 text-[11px] font-bold transition cursor-pointer"
-                    >
-                      Gamer 2
-                    </button>
                   </div>
                 </div>
-              </div>
 
-              {/* Custom Avatar URL input */}
-              <div className="space-y-1.5">
-                <label className="text-xs font-bold text-slate-700 dark:text-slate-300">
-                  {isMM ? 'ပုံလိပ်စာ URL (ရွေးချယ်ရန်)' : 'Custom Avatar Image URL (Optional)'}
-                </label>
-                <input
-                  type="url"
-                  value={editAvatarUrl}
-                  onChange={(e) => setEditAvatarUrl(e.target.value)}
-                  placeholder="https://images.unsplash.com/..."
-                  className="w-full px-3.5 py-2.5 bg-slate-50 dark:bg-slate-950 border border-slate-200 dark:border-slate-800 rounded-2xl text-xs sm:text-sm text-slate-900 dark:text-white placeholder-slate-400 focus:outline-none focus:border-cyan-500 transition font-mono"
-                />
+                {uploadProgressText && (
+                  <p className="text-[11px] text-cyan-600 dark:text-cyan-400 font-medium flex items-center gap-1">
+                    <Loader2 className="w-3 h-3 animate-spin" />
+                    <span>{uploadProgressText}</span>
+                  </p>
+                )}
+                <p className="text-[11px] text-slate-400 dark:text-slate-500">
+                  {isMM
+                    ? 'JPG, PNG, သို့မဟုတ် WEBP ဖိုင်များကို လက်ခံပါသည်။ (အများဆုံး 5MB)'
+                    : 'Supports JPG, PNG, or WEBP images (Max 5MB). Uploads directly to Supabase storage bucket.'}
+                </p>
               </div>
 
               {/* Full Name input */}
