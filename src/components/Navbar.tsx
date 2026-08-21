@@ -28,8 +28,8 @@ import {
 } from 'lucide-react';
 
 interface NavbarProps {
-  currentTab: 'home' | 'marketplace' | 'orders' | 'sell' | 'admin' | 'seller' | 'schema' | 'profile';
-  setCurrentTab: (tab: 'home' | 'marketplace' | 'orders' | 'sell' | 'admin' | 'seller' | 'schema' | 'profile') => void;
+  currentTab: 'home' | 'marketplace' | 'orders' | 'sell' | 'admin' | 'seller' | 'schema' | 'profile' | 'auth';
+  setCurrentTab: (tab: any) => void;
   userRole: UserRole;
   setUserRole: (role: UserRole) => void;
   searchQuery: string;
@@ -319,11 +319,17 @@ export const Navbar: React.FC<NavbarProps> = ({
                   title={`${authUser.fullName} (${authUser.username})`}
                 >
                   <div className="relative">
-                    <img
-                      src={authUser.avatarUrl || "https://images.unsplash.com/photo-1566492031773-4f4e44671857?w=150&auto=format&fit=crop&q=80"}
-                      alt="user"
-                      className="w-7 h-7 sm:w-8 sm:h-8 rounded-full object-cover border-2 border-cyan-400"
-                    />
+                    {authUser.avatarUrl ? (
+                      <img
+                        src={authUser.avatarUrl}
+                        alt="user"
+                        className="w-7 h-7 sm:w-8 sm:h-8 rounded-full object-cover border-2 border-cyan-400"
+                      />
+                    ) : (
+                      <div className="w-7 h-7 sm:w-8 sm:h-8 rounded-full bg-cyan-600 text-white text-xs font-black flex items-center justify-center border-2 border-cyan-400">
+                        {(authUser.fullName || authUser.username || 'U').charAt(0).toUpperCase()}
+                      </div>
+                    )}
                     {authUser.kycStatus === 'VERIFIED' && (
                       <span className="absolute -bottom-0.5 -right-0.5 w-3 h-3 bg-emerald-500 rounded-full border border-slate-950 flex items-center justify-center text-[7px] text-slate-950 font-black">
                         ✓

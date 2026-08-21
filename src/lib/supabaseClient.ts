@@ -266,6 +266,60 @@ export async function signOutFromSupabase(): Promise<{ success: boolean; error?:
   }
 }
 
+/**
+ * Send Password Reset Email via Supabase Auth
+ */
+export async function resetPasswordWithSupabase(
+  email: string
+): Promise<{ success: boolean; error?: string }> {
+  if (!isSupabaseConfigured || !supabase) {
+    return { success: true };
+  }
+
+  try {
+    const { error } = await supabase.auth.resetPasswordForEmail(email.trim(), {
+      redirectTo: typeof window !== 'undefined' ? window.location.origin : undefined,
+    });
+    if (error) {
+      return { success: false, error: error.message };
+    }
+    return { success: true };
+  } catch (err: any) {
+    return { success: false, error: err?.message || 'Failed to send password reset email' };
+  }
+}
+
+/**
+ * Update KYC status in Supabase `profiles` table
+ */
+export async function updateProfileKycStatus(
+  userId: string,
+  kycStatus: KycStatus
+): Promise<{ success: boolean; error?: string }> {
+  if (!isSupabaseConfigured || !supabase) {
+    return { success: true };
+  }
+
+  try {
+    const { error } = await supabase
+      .from('profiles')
+      .update({
+        kyc_status: kycStatus,
+        updated_at: new Date().toISOString(),
+      })
+      .eq('id', userId);
+
+    if (error) {
+      console.warn('Supabase KYC update note:', error.message);
+      return { success: false, error: error.message };
+    }
+    return { success: true };
+  } catch (err: any) {
+    console.warn('Supabase KYC update exception:', err);
+    return { success: false, error: err?.message || 'Failed to update KYC status' };
+  }
+}
+
 
 /**
  * Safely fetches live marketplace listings from Supabase `listings` table

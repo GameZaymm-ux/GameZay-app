@@ -17,8 +17,8 @@ import {
 } from 'lucide-react';
 
 interface MobileBottomNavProps {
-  currentTab: 'home' | 'marketplace' | 'orders' | 'sell' | 'admin' | 'seller' | 'schema' | 'profile';
-  setCurrentTab: (tab: 'home' | 'marketplace' | 'orders' | 'sell' | 'admin' | 'seller' | 'schema' | 'profile') => void;
+  currentTab: 'home' | 'marketplace' | 'orders' | 'sell' | 'admin' | 'seller' | 'schema' | 'profile' | 'auth';
+  setCurrentTab: (tab: any) => void;
   openSellModal: () => void;
   activeOrdersCount: number;
   kycStatus?: KycStatus;

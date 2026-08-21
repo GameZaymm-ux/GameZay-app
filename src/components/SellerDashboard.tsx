@@ -407,6 +407,61 @@ export const SellerDashboard: React.FC<SellerDashboardProps> = ({
     return orders.find((o) => o.id === selectedSellerOrderId) || null;
   }, [orders, selectedSellerOrderId]);
 
+  // -------------------------------------------------------------------------
+  // STRICT KYC SECURITY LOCK: If user is not verified, block Seller Studio completely
+  // -------------------------------------------------------------------------
+  if (kycStatus !== 'VERIFIED') {
+    return (
+      <div className="max-w-3xl mx-auto px-4 py-12 sm:py-16 text-center space-y-6">
+        <div className="w-20 h-20 rounded-3xl bg-amber-500/10 border border-amber-500/30 text-amber-500 flex items-center justify-center mx-auto shadow-xl shadow-amber-500/10">
+          <Lock className="w-10 h-10" />
+        </div>
+
+        <div className="space-y-3 max-w-lg mx-auto">
+          <span className="inline-flex items-center gap-1.5 px-3 py-1 rounded-full bg-amber-500/10 text-amber-600 dark:text-amber-400 border border-amber-500/20 text-xs font-black tracking-wider uppercase">
+            <ShieldAlert className="w-3.5 h-3.5" />
+            <span>KYC Verification Required</span>
+          </span>
+          <h2 className="text-xl sm:text-2xl font-black text-slate-900 dark:text-white">
+            {isMM ? 'Seller Studio အသုံးပြုခွင့် သော့ခတ်ထားပါသည်' : 'Seller Studio is Locked'}
+          </h2>
+          <p className="text-xs sm:text-sm text-slate-600 dark:text-slate-400 leading-relaxed">
+            {kycStatus === 'PENDING'
+              ? isMM
+                ? 'သင်၏ KYC မှတ်ပုံတင်စိစစ်မှုကို အက်ဒမင်အဖွဲ့မှ စစ်ဆေးနေဆဲဖြစ်ပါသည်။ စိစစ်အတည်ပြုပြီးပါက Seller Studio သို့ အလိုအလျောက် ဝင်ရောက်ခွင့်ရရှိမည်ဖြစ်ပါသည်။'
+                : 'Your KYC submission is pending Admin review. Once approved, Seller Studio tools, escrow balances, and inventory management will unlock automatically.'
+              : isMM
+              ? 'Seller Studio is locked. Complete KYC to become a verified seller and unlock sales tools. ဂိမ်းအကောင့်များတင်ရောင်းရန် မှတ်ပုံတင်စိစစ်ပေးရန် လိုအပ်ပါသည်။'
+              : 'Seller Studio is locked. Complete KYC to become a verified seller.'}
+          </p>
+        </div>
+
+        <div className="flex flex-col sm:flex-row items-center justify-center gap-3 pt-2">
+          {kycStatus !== 'PENDING' && onOpenKycModal && (
+            <button
+              type="button"
+              onClick={onOpenKycModal}
+              className="w-full sm:w-auto px-6 py-3.5 rounded-2xl bg-gradient-to-r from-amber-500 to-orange-500 hover:from-amber-400 hover:to-orange-400 text-slate-950 font-black text-xs sm:text-sm shadow-lg shadow-amber-500/25 transition flex items-center justify-center gap-2 cursor-pointer active:scale-98"
+            >
+              <ShieldCheck className="w-4 h-4" />
+              <span>{isMM ? 'ခုချက်ချင်း KYC လျှောက်မည်' : 'Complete KYC Verification'}</span>
+            </button>
+          )}
+
+          {onSwitchToBuyerMode && (
+            <button
+              type="button"
+              onClick={onSwitchToBuyerMode}
+              className="w-full sm:w-auto px-6 py-3.5 rounded-2xl bg-slate-200 dark:bg-slate-800 hover:bg-slate-300 dark:hover:bg-slate-700 text-slate-800 dark:text-slate-200 font-bold text-xs sm:text-sm transition cursor-pointer"
+            >
+              {isMM ? 'ပင်မစျေးကွက်သို့ ပြန်သွားမည်' : 'Back to Marketplace'}
+            </button>
+          )}
+        </div>
+      </div>
+    );
+  }
+
   return (
     <div className="max-w-7xl mx-auto px-3 sm:px-6 lg:px-8 py-4 sm:py-6 space-y-5 pb-24 md:pb-12">
       {/* ------------------------------------------------------------ */}

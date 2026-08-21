@@ -23,6 +23,7 @@ import { NotificationsModal } from './components/NotificationsModal';
 import { UserProfileView } from './components/UserProfileView';
 import { SettingsModal } from './components/SettingsModal';
 import { AuthModal } from './components/AuthModal';
+import { AuthView, AuthScreenMode } from './components/AuthView';
 import { KycVerificationModal } from './components/KycVerificationModal';
 import { KycRequiredModal, KycPendingModal } from './components/KycGateModals';
 import { MobileBottomNav } from './components/MobileBottomNav';
@@ -37,6 +38,7 @@ import {
   fetchLiveProfile,
   createLiveListing,
   signOutFromSupabase,
+  updateProfileKycStatus,
   isSupabaseConfigured,
   supabase,
 } from './lib/supabaseClient';
@@ -77,11 +79,12 @@ function MainApp() {
 
   // Navigation & Role State
   const [currentTab, setCurrentTab] = useState<
-    'home' | 'marketplace' | 'orders' | 'sell' | 'admin' | 'seller' | 'schema' | 'profile'
+    'home' | 'marketplace' | 'orders' | 'sell' | 'admin' | 'seller' | 'schema' | 'profile' | 'auth'
   >('home');
   const [userRole, setUserRole] = useState<UserRole>('BUYER');
   const [sellerTab, setSellerTab] = useState<SellerTabType>('overview');
   const [isNotificationsOpen, setIsNotificationsOpen] = useState(false);
+  const [authScreenMode, setAuthScreenMode] = useState<AuthScreenMode>('signin');
 
   // Listings & Filter State
   const [listings, setListings] = useState<AccountListing[]>(INITIAL_LISTINGS);
@@ -226,10 +229,10 @@ function MainApp() {
     };
   }, [userRole]);
 
-  // Auth Handler functions
+  // Auth Handler functions - Full View Screen & Minimal Onboarding
   const handleOpenAuthModal = (mode: 'signin' | 'signup' = 'signin') => {
-    setAuthModalMode(mode);
-    setIsAuthModalOpen(true);
+    setAuthScreenMode(mode);
+    setCurrentTab('auth');
   };
 
   const handleAuthSuccess = async (userData: {
@@ -241,38 +244,47 @@ function MainApp() {
   }) => {
     try {
       const profile = await fetchLiveProfile(userData.id);
+      const isDemoAccount = userData.email === 'gamezaymm@gmail.com' || userData.email === 'seller@gamezay.mm';
+      const resolvedKyc = (profile.kycStatus as KycStatus) || (isDemoAccount ? 'VERIFIED' : 'NOT_SUBMITTED');
+      
       setAuthUser({
         id: userData.id,
         email: userData.email,
         fullName: userData.fullName || profile.name,
         username: userData.username || profile.username || userData.email.split('@')[0],
-        phone: userData.phone || profile.phone || '09798889901',
-        avatarUrl: 'https://images.unsplash.com/photo-1566492031773-4f4e44671857?w=300&auto=format&fit=crop&q=80',
-        kycStatus: profile.kycStatus || 'VERIFIED',
-        isProMerchant: profile.isProMerchant ?? true,
+        phone: userData.phone || profile.phone || '',
+        avatarUrl: undefined, // Standard blank letter/placeholder avatar
+        kycStatus: resolvedKyc,
+        isProMerchant: profile.isProMerchant ?? false,
         role: userRole,
-        balanceMMK: profile.balanceMMK ?? 850000,
-        heldInEscrowMMK: profile.heldInEscrowMMK ?? 320000,
-        sellerRating: profile.sellerRating ?? 4.95,
-        totalRatings: profile.totalRatings ?? 38,
+        balanceMMK: profile.balanceMMK ?? 0,
+        heldInEscrowMMK: profile.heldInEscrowMMK ?? 0,
+        sellerRating: profile.sellerRating ?? 5.0,
+        totalRatings: profile.totalRatings ?? 0,
       });
-      if (profile.kycStatus) setKycStatus(profile.kycStatus);
+      setKycStatus(resolvedKyc);
+      setCurrentTab('profile');
     } catch {
+      const isDemoAccount = userData.email === 'gamezaymm@gmail.com' || userData.email === 'seller@gamezay.mm';
+      const defaultKyc: KycStatus = isDemoAccount ? 'VERIFIED' : 'NOT_SUBMITTED';
+      
       setAuthUser({
         id: userData.id,
         email: userData.email,
         fullName: userData.fullName,
         username: userData.username,
-        phone: userData.phone || '09798889901',
-        avatarUrl: 'https://images.unsplash.com/photo-1566492031773-4f4e44671857?w=300&auto=format&fit=crop&q=80',
-        kycStatus: 'VERIFIED',
-        isProMerchant: true,
+        phone: userData.phone || '',
+        avatarUrl: undefined, // Standard blank letter/placeholder avatar
+        kycStatus: defaultKyc,
+        isProMerchant: false,
         role: userRole,
-        balanceMMK: 850000,
-        heldInEscrowMMK: 320000,
-        sellerRating: 4.95,
-        totalRatings: 38,
+        balanceMMK: 0,
+        heldInEscrowMMK: 0,
+        sellerRating: 5.0,
+        totalRatings: 0,
       });
+      setKycStatus(defaultKyc);
+      setCurrentTab('profile');
     }
   };
 
@@ -281,8 +293,9 @@ function MainApp() {
       await signOutFromSupabase();
     } catch {}
     setAuthUser(null);
-    setKycStatus('UNSUBMITTED');
+    setKycStatus('NOT_SUBMITTED');
     setMerchantSubscription(undefined);
+    setCurrentTab('home');
   };
 
 
@@ -723,6 +736,10 @@ function MainApp() {
   const handleKycSubmit = (submission: KycSubmission) => {
     setKycSubmissions((prev) => [submission, ...prev]);
     setKycStatus('PENDING');
+    if (authUser) {
+      setAuthUser((prev) => (prev ? { ...prev, kycStatus: 'PENDING' } : null));
+      updateProfileKycStatus(authUser.id, 'PENDING').catch(() => {});
+    }
   };
 
   const handleApproveKyc = (submissionId: string) => {
@@ -731,6 +748,10 @@ function MainApp() {
     );
     setKycStatus('VERIFIED');
     setUserRole('SELLER');
+    if (authUser) {
+      setAuthUser((prev) => (prev ? { ...prev, kycStatus: 'VERIFIED' } : null));
+      updateProfileKycStatus(authUser.id, 'VERIFIED').catch(() => {});
+    }
   };
 
   const handleRejectKyc = (submissionId: string, reason: string) => {
@@ -738,6 +759,10 @@ function MainApp() {
       prev.map((k) => (k.id === submissionId ? { ...k, status: 'REJECTED' as const } : k))
     );
     setKycStatus('REJECTED');
+    if (authUser) {
+      setAuthUser((prev) => (prev ? { ...prev, kycStatus: 'REJECTED' } : null));
+      updateProfileKycStatus(authUser.id, 'REJECTED').catch(() => {});
+    }
   };
 
   const handleListingCreated = (newListing: AccountListing) => {
@@ -1296,7 +1321,21 @@ function MainApp() {
               onOpenAuthModal={handleOpenAuthModal}
               onLogout={handleSignOut}
             />
+          </ErrorBoundary>
+        )}
 
+        {/* View 7: Dedicated Clean Full-View Authentication Screen */}
+        {currentTab === 'auth' && (
+          <ErrorBoundary
+            fallbackTitle="Authentication Error"
+            fallbackMessage="An error occurred on the login screen."
+            onReset={() => setCurrentTab('home')}
+          >
+            <AuthView
+              initialMode={authScreenMode}
+              onAuthSuccess={handleAuthSuccess}
+              onBackToHome={() => setCurrentTab('home')}
+            />
           </ErrorBoundary>
         )}
       </div>

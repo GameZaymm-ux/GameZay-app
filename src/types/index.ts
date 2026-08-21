@@ -6,7 +6,7 @@ export type GameType = 'efootball' | 'mlbb' | 'pubg' | 'coc' | 'freefire' | 'gen
 
 export type UserRole = 'BUYER' | 'SELLER' | 'ADMIN';
 
-export type KycStatus = 'UNSUBMITTED' | 'PENDING' | 'VERIFIED' | 'REJECTED';
+export type KycStatus = 'NOT_SUBMITTED' | 'UNSUBMITTED' | 'PENDING' | 'VERIFIED' | 'REJECTED';
 
 export interface AuthUser {
   id: string;

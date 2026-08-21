@@ -70,8 +70,8 @@ export const UserProfileView: React.FC<UserProfileViewProps> = ({
   const displayUsername = authUser?.username || 'Guest';
   const displayEmail = authUser?.email || (isMM ? 'အကောင့်ဝင်ရန် လိုအပ်သည်' : 'Not signed in');
   const displayPhone = authUser?.phone || '-';
-  const displayAvatar = authUser?.avatarUrl || 'https://images.unsplash.com/photo-1535713875002-d1d0cf377fde?w=300&auto=format&fit=crop&q=80';
-  const activeKyc = authUser?.kycStatus || 'UNSUBMITTED';
+  const initialLetter = (authUser?.fullName || authUser?.username || 'G').charAt(0).toUpperCase();
+  const activeKyc = authUser?.kycStatus || kycStatus;
 
   return (
     <div className="w-full max-w-4xl mx-auto px-4 sm:px-6 lg:px-8 py-6 space-y-6 animate-in fade-in duration-200">
@@ -130,11 +130,17 @@ export const UserProfileView: React.FC<UserProfileViewProps> = ({
           {/* Avatar & User Details */}
           <div className="flex items-center gap-4 sm:gap-5">
             <div className="relative">
-              <img
-                src={displayAvatar}
-                alt="Profile Avatar"
-                className="w-18 h-18 sm:w-20 sm:h-20 rounded-2xl object-cover border-2 border-cyan-500 shadow-md shadow-cyan-500/20"
-              />
+              {authUser?.avatarUrl ? (
+                <img
+                  src={authUser.avatarUrl}
+                  alt="Profile Avatar"
+                  className="w-18 h-18 sm:w-20 sm:h-20 rounded-2xl object-cover border-2 border-cyan-500 shadow-md shadow-cyan-500/20"
+                />
+              ) : (
+                <div className="w-18 h-18 sm:w-20 sm:h-20 rounded-2xl bg-gradient-to-br from-cyan-600 via-blue-700 to-indigo-800 text-white font-black text-2xl sm:text-3xl flex items-center justify-center border-2 border-cyan-400/50 shadow-md shadow-cyan-500/20 select-none">
+                  {initialLetter}
+                </div>
+              )}
               {activeKyc === 'VERIFIED' && (
                 <div
                   className="absolute -bottom-1 -right-1 p-1 bg-emerald-500 text-slate-950 rounded-full ring-2 ring-white dark:ring-slate-900 shadow-sm"
@@ -209,37 +215,75 @@ export const UserProfileView: React.FC<UserProfileViewProps> = ({
       {/* ======================================================== */}
       {/* 2. SELLER STUDIO ENTRY BANNER                            */}
       {/* ======================================================== */}
-      <div className="bg-gradient-to-r from-slate-900 via-emerald-950/40 to-slate-900 border border-emerald-500/30 rounded-3xl p-6 sm:p-7 shadow-lg relative overflow-hidden group">
-        <div className="absolute right-0 top-0 bottom-0 w-1/3 bg-emerald-500/5 blur-2xl pointer-events-none" />
+      {activeKyc === 'VERIFIED' ? (
+        <div className="bg-gradient-to-r from-slate-900 via-emerald-950/40 to-slate-900 border border-emerald-500/30 rounded-3xl p-6 sm:p-7 shadow-lg relative overflow-hidden group">
+          <div className="absolute right-0 top-0 bottom-0 w-1/3 bg-emerald-500/5 blur-2xl pointer-events-none" />
 
-        <div className="relative flex flex-col md:flex-row md:items-center justify-between gap-5">
-          <div className="space-y-2 max-w-xl">
-            <div className="flex items-center gap-2">
-              <div className="p-2 rounded-xl bg-emerald-500/20 text-emerald-400">
-                <Store className="w-5 h-5" />
+          <div className="relative flex flex-col md:flex-row md:items-center justify-between gap-5">
+            <div className="space-y-2 max-w-xl">
+              <div className="flex items-center gap-2">
+                <div className="p-2 rounded-xl bg-emerald-500/20 text-emerald-400">
+                  <Store className="w-5 h-5" />
+                </div>
+                <h2 className="text-base sm:text-lg font-black text-white flex items-center gap-2">
+                  <span>{t('profile.sellerStudioBanner.header')}</span>
+                  <span className="text-[10px] font-bold px-2 py-0.5 rounded-full bg-emerald-500 text-slate-950 font-mono">
+                    {t('profile.sellerStudioBanner.badge')}
+                  </span>
+                </h2>
               </div>
-              <h2 className="text-base sm:text-lg font-black text-white flex items-center gap-2">
-                <span>{t('profile.sellerStudioBanner.header')}</span>
-                <span className="text-[10px] font-bold px-2 py-0.5 rounded-full bg-emerald-500 text-slate-950 font-mono">
-                  {t('profile.sellerStudioBanner.badge')}
-                </span>
-              </h2>
+              <p className="text-xs text-slate-300 leading-relaxed">
+                {t('profile.sellerStudioBanner.description')}
+              </p>
             </div>
-            <p className="text-xs text-slate-300 leading-relaxed">
-              {t('profile.sellerStudioBanner.description')}
-            </p>
-          </div>
 
-          <button
-            type="button"
-            onClick={() => onNavigateToSellerStudio && onNavigateToSellerStudio()}
-            className="px-6 py-3 rounded-2xl bg-emerald-500 hover:bg-emerald-400 text-slate-950 font-black text-xs sm:text-sm shadow-lg shadow-emerald-500/30 transition flex items-center justify-center gap-2 cursor-pointer active:scale-95 group-hover:shadow-emerald-500/50 shrink-0"
-          >
-            <span>{t('profile.sellerStudioBanner.cta')}</span>
-            <ArrowRight className="w-4 h-4 group-hover:translate-x-1 transition-transform" />
-          </button>
+            <button
+              type="button"
+              onClick={() => onNavigateToSellerStudio && onNavigateToSellerStudio()}
+              className="px-6 py-3 rounded-2xl bg-emerald-500 hover:bg-emerald-400 text-slate-950 font-black text-xs sm:text-sm shadow-lg shadow-emerald-500/30 transition flex items-center justify-center gap-2 cursor-pointer active:scale-95 group-hover:shadow-emerald-500/50 shrink-0"
+            >
+              <span>{t('profile.sellerStudioBanner.cta')}</span>
+              <ArrowRight className="w-4 h-4 group-hover:translate-x-1 transition-transform" />
+            </button>
+          </div>
         </div>
-      </div>
+      ) : (
+        <div className="bg-slate-900/60 border border-slate-800 rounded-3xl p-6 sm:p-7 shadow-sm relative overflow-hidden">
+          <div className="flex flex-col md:flex-row md:items-center justify-between gap-5">
+            <div className="space-y-2 max-w-xl">
+              <div className="flex items-center gap-2">
+                <div className="p-2 rounded-xl bg-amber-500/10 text-amber-500 border border-amber-500/20">
+                  <Lock className="w-5 h-5" />
+                </div>
+                <h2 className="text-base sm:text-lg font-black text-white flex items-center gap-2">
+                  <span>{isMM ? 'Seller Studio အကောင့်သော့ခတ်ထားပါသည်' : 'Seller Studio Locked'}</span>
+                  <span className="text-[10px] font-bold px-2 py-0.5 rounded-full bg-amber-500/20 text-amber-300 border border-amber-500/30 font-mono">
+                    KYC REQUIRED
+                  </span>
+                </h2>
+              </div>
+              <p className="text-xs text-slate-400 leading-relaxed">
+                {activeKyc === 'PENDING'
+                  ? isMM
+                    ? 'သင်၏ KYC မှတ်ပုံတင်စိစစ်မှုကို အက်ဒမင်မှ စစ်ဆေးနေဆဲဖြစ်ပါသည်။ စိစစ်အတည်ပြုပြီးပါက Seller Studio ပွင့်သွားမည်ဖြစ်ပါသည်။'
+                    : 'Your KYC submission is pending admin verification. Seller Studio will be automatically unlocked once approved.'
+                  : isMM
+                  ? 'ဂိမ်းအကောင့်များ တင်ရောင်းရန်နှင့် Seller Studio အသုံးပြုရန်အတွက် KYC မှတ်ပုံတင် စိစစ်ပေးရန် လိုအပ်ပါသည်။'
+                  : 'Seller Studio is locked. Complete KYC verification to become a verified seller and unlock sales tools.'}
+              </p>
+            </div>
+
+            <button
+              type="button"
+              onClick={() => onOpenKycModal && onOpenKycModal()}
+              className="px-6 py-3 rounded-2xl bg-gradient-to-r from-amber-500 to-orange-500 hover:from-amber-400 hover:to-orange-400 text-slate-950 font-black text-xs sm:text-sm shadow-md shadow-amber-500/20 transition flex items-center justify-center gap-2 cursor-pointer active:scale-95 shrink-0"
+            >
+              <ShieldAlert className="w-4 h-4" />
+              <span>{activeKyc === 'PENDING' ? (isMM ? 'စိစစ်ဆဲ အခြေအနေ ကြည့်မည်' : 'Check Status') : (isMM ? 'KYC လျှောက်ထားမည်' : 'Complete KYC')}</span>
+            </button>
+          </div>
+        </div>
+      )}
 
       {/* ======================================================== */}
       {/* 3. SETTINGS SECTION                                      */}
