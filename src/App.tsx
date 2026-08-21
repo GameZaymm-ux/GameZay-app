@@ -39,6 +39,7 @@ import {
   createLiveListing,
   signOutFromSupabase,
   updateProfileKycStatus,
+  updateProfileKycDetails,
   isSupabaseConfigured,
   supabase,
 } from './lib/supabaseClient';
@@ -754,12 +755,27 @@ function MainApp() {
     setListings((prev) => prev.filter((item) => item.id !== listingId));
   };
 
-  const handleKycSubmit = (submission: KycSubmission) => {
-    setKycSubmissions((prev) => [submission, ...prev]);
+  const handleKycSubmit = async (submission: Omit<KycSubmission, 'id' | 'status' | 'submittedAt'>) => {
+    const fullSubmission: KycSubmission = {
+      ...submission,
+      id: `kyc-${Date.now()}`,
+      status: 'PENDING',
+      submittedAt: new Date().toISOString(),
+    };
+
+    setKycSubmissions((prev) => [fullSubmission, ...prev]);
     setKycStatus('PENDING');
     if (authUser) {
-      setAuthUser((prev) => (prev ? { ...prev, kycStatus: 'PENDING' } : null));
-      updateProfileKycStatus(authUser.id, 'PENDING').catch(() => {});
+      setAuthUser((prev) => (prev ? { ...prev, fullName: submission.fullName, phone: submission.phoneNumber, kycStatus: 'PENDING' } : null));
+      await updateProfileKycDetails(authUser.id, {
+        fullName: submission.fullName,
+        nrcNumber: submission.idNumber,
+        phone: submission.phoneNumber,
+        nrcFrontUrl: submission.idFrontUrl,
+        nrcBackUrl: submission.idBackUrl || submission.idFrontUrl,
+        selfieUrl: submission.selfieUrl || submission.idFrontUrl,
+        kycStatus: 'PENDING',
+      }).catch((err) => console.warn('KYC submission sync error:', err));
     }
   };
 
@@ -1459,6 +1475,10 @@ function MainApp() {
         isOpen={isKycModalOpen}
         onClose={() => setIsKycModalOpen(false)}
         onSubmitKyc={handleKycSubmit}
+        currentKycStatus={authUser?.kycStatus || kycStatus}
+        userId={authUser?.id || 'usr_current'}
+        initialFullName={authUser?.fullName || ''}
+        initialPhone={authUser?.phone || ''}
       />
 
       {/* KYC Gate Alert Modals for Listing Accounts */}

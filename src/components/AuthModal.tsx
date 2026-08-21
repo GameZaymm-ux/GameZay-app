@@ -79,13 +79,6 @@ export const AuthModal: React.FC<AuthModalProps> = ({
     setSuccessMessage(null);
   };
 
-  // Quick Demo Account Auto-Fill
-  const handleQuickFill = (email: string, pass: string, name: string, username: string, phone: string) => {
-    resetMessages();
-    setSignInEmail(email);
-    setSignInPassword(pass);
-  };
-
   // Handle Sign In Submission
   const handleSignInSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
@@ -395,7 +388,7 @@ export const AuthModal: React.FC<AuthModalProps> = ({
               <button
                 type="submit"
                 disabled={isLoading}
-                className="w-full py-3 px-4 rounded-xl font-black text-sm bg-gradient-to-r from-cyan-500 via-teal-500 to-emerald-500 hover:from-cyan-400 hover:to-emerald-400 text-slate-950 shadow-lg shadow-cyan-500/25 transition transform active:scale-98 cursor-pointer flex items-center justify-center gap-2 disabled:opacity-50"
+                className="w-full py-3 px-4 rounded-xl font-black text-sm bg-gradient-to-r from-cyan-500 via-teal-500 to-emerald-500 hover:from-cyan-400 hover:to-emerald-400 text-slate-950 shadow-lg shadow-cyan-500/25 transition transform active:scale-98 cursor-pointer flex items-center justify-center gap-2 disabled:opacity-50 mt-2"
               >
                 {isLoading ? (
                   <div className="w-5 h-5 border-2 border-slate-950 border-t-transparent rounded-full animate-spin" />
@@ -406,50 +399,6 @@ export const AuthModal: React.FC<AuthModalProps> = ({
                   </>
                 )}
               </button>
-
-              {/* Quick 1-Click Demo Accounts */}
-              <div className="pt-3 border-t border-slate-200 dark:border-slate-800 space-y-2">
-                <div className="text-[11px] font-bold text-slate-500 uppercase tracking-wider text-center">
-                  {isMM ? '⚡ အစမ်းအကောင့်ဖြင့် ၁ ချက်နှိပ် ဝင်ရောက်ရန်' : '⚡ 1-Click Demo Account Quick Fill'}
-                </div>
-                <div className="grid grid-cols-3 gap-1.5">
-                  <button
-                    type="button"
-                    onClick={() => handleQuickFill('buyer@gamezay.mm', '12345678', 'Kyaw Zin Thant', 'KyawZin_Gamer99', '09450012345')}
-                    className="p-2 rounded-xl bg-slate-100 dark:bg-slate-800 hover:bg-cyan-500/10 hover:border-cyan-500/30 border border-slate-200 dark:border-slate-700 text-left transition cursor-pointer group"
-                  >
-                    <div className="text-[10px] font-black text-cyan-600 dark:text-cyan-400 flex items-center gap-1">
-                      <Gamepad2 className="w-3 h-3" />
-                      <span>Buyer</span>
-                    </div>
-                    <div className="text-[9px] text-slate-500 truncate">buyer@gamezay.mm</div>
-                  </button>
-
-                  <button
-                    type="button"
-                    onClick={() => handleQuickFill('merchant@gamezay.mm', '12345678', 'Ko Min Thant', 'ProGold_Merchant', '09798889901')}
-                    className="p-2 rounded-xl bg-slate-100 dark:bg-slate-800 hover:bg-amber-500/10 hover:border-amber-500/30 border border-slate-200 dark:border-slate-700 text-left transition cursor-pointer group"
-                  >
-                    <div className="text-[10px] font-black text-amber-500 flex items-center gap-1">
-                      <Crown className="w-3 h-3" />
-                      <span>Merchant</span>
-                    </div>
-                    <div className="text-[9px] text-slate-500 truncate">merchant@gamezay.mm</div>
-                  </button>
-
-                  <button
-                    type="button"
-                    onClick={() => handleQuickFill('admin@gamezay.mm', '12345678', 'GameZay Escrow Admin', 'Admin_Official', '09977889900')}
-                    className="p-2 rounded-xl bg-slate-100 dark:bg-slate-800 hover:bg-emerald-500/10 hover:border-emerald-500/30 border border-slate-200 dark:border-slate-700 text-left transition cursor-pointer group"
-                  >
-                    <div className="text-[10px] font-black text-emerald-500 flex items-center gap-1">
-                      <ShieldCheck className="w-3 h-3" />
-                      <span>Admin</span>
-                    </div>
-                    <div className="text-[9px] text-slate-500 truncate">admin@gamezay.mm</div>
-                  </button>
-                </div>
-              </div>
             </form>
           ) : (
             /* ======================================================== */

@@ -333,15 +333,27 @@ export const UserProfileView: React.FC<UserProfileViewProps> = ({
                     <ShieldCheck className="w-3.5 h-3.5 text-emerald-500" />
                     <span>LEVEL 2: VERIFIED SELLER</span>
                   </span>
+                ) : activeKyc === 'PENDING' ? (
+                  <button
+                    type="button"
+                    onClick={() => onOpenKycModal && onOpenKycModal()}
+                    className="px-3 py-1 rounded-xl bg-amber-500/15 border border-amber-500/30 text-amber-600 dark:text-amber-400 text-xs font-black flex items-center gap-1.5 font-mono cursor-pointer hover:bg-amber-500/25 transition"
+                    title={isMM ? 'စိစစ်ဆဲ အခြေအနေ ကြည့်ရန် နှိပ်ပါ' : 'Click to view review status'}
+                  >
+                    <Clock className="w-3.5 h-3.5 text-amber-500 animate-spin" />
+                    <span>LEVEL 1: ⏳ KYC စိစစ်ဆဲ (PENDING)</span>
+                  </button>
                 ) : (
-                  <span className="px-3 py-1 rounded-xl bg-slate-100 dark:bg-slate-800 border border-slate-200 dark:border-slate-700 text-slate-600 dark:text-slate-400 text-xs font-bold flex items-center gap-1.5 font-mono">
+                  <button
+                    type="button"
+                    onClick={() => onOpenKycModal && onOpenKycModal()}
+                    className="px-3 py-1 rounded-xl bg-amber-500/20 hover:bg-amber-500/30 border border-amber-500/40 text-amber-700 dark:text-amber-300 text-xs font-black flex items-center gap-1.5 font-mono cursor-pointer transition active:scale-95 shadow-sm"
+                    title={isMM ? 'KYC လျှောက်ထားရန် နှိပ်ပါ' : 'Click to Apply for KYC'}
+                  >
                     <ShieldAlert className="w-3.5 h-3.5 text-amber-500" />
-                    <span>
-                      {activeKyc === 'PENDING'
-                        ? 'LEVEL 1: ⏳ KYC စိစစ်ဆဲ (PENDING)'
-                        : 'LEVEL 1: UNVERIFIED (မစိစစ်ရသေးပါ)'}
-                    </span>
-                  </span>
+                    <span>LEVEL 1: {isMM ? 'KYC လျှောက်ထားရန်' : 'Apply for KYC'}</span>
+                    <Sparkles className="w-3 h-3 text-amber-500" />
+                  </button>
                 )}
               </div>
             </div>

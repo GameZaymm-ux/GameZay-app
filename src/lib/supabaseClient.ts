@@ -167,7 +167,7 @@ export async function signUpWithSupabase(
             username: username.trim() || email.split('@')[0],
             email: email.trim(),
             phone: phone?.trim() || '',
-            kyc_status: 'UNSUBMITTED',
+            kyc_status: 'NOT_SUBMITTED',
             is_pro_merchant: false,
             balance_mmk: 0,
             held_in_escrow_mmk: 0,
@@ -277,6 +277,127 @@ export async function resetPasswordWithSupabase(
     return { success: true };
   } catch (err: any) {
     return { success: false, error: err?.message || 'Failed to send password reset email' };
+  }
+}
+
+/**
+ * Upload a KYC document image file to Supabase Storage 'kyc_documents' (or fallback 'avatars') bucket
+ */
+export async function uploadKycDocument(
+  userId: string,
+  file: File,
+  docType: 'front' | 'back' | 'selfie'
+): Promise<{ success: boolean; publicUrl?: string; error?: string }> {
+  if (!isSupabaseConfigured || !supabase) {
+    return new Promise((resolve) => {
+      const reader = new FileReader();
+      reader.onloadend = () => {
+        resolve({ success: true, publicUrl: reader.result as string });
+      };
+      reader.onerror = () => {
+        resolve({ success: false, error: 'Failed to read local image file.' });
+      };
+      reader.readAsDataURL(file);
+    });
+  }
+
+  try {
+    const fileExt = file.name.split('.').pop() || 'jpg';
+    const filePath = `${userId}/${docType}_${Date.now()}.${fileExt}`;
+
+    // Try 'kyc_documents' bucket first, fallback to 'avatars'
+    let bucketName = 'kyc_documents';
+    let { error: uploadError } = await supabase.storage
+      .from(bucketName)
+      .upload(filePath, file, { upsert: true, cacheControl: '3600' });
+
+    if (uploadError) {
+      bucketName = 'avatars';
+      const fallbackResult = await supabase.storage
+        .from(bucketName)
+        .upload(filePath, file, { upsert: true, cacheControl: '3600' });
+      uploadError = fallbackResult.error;
+    }
+
+    if (uploadError) {
+      console.warn('KYC storage upload fallback to base64:', uploadError.message);
+      return new Promise((resolve) => {
+        const reader = new FileReader();
+        reader.onloadend = () => {
+          resolve({ success: true, publicUrl: reader.result as string, error: uploadError?.message });
+        };
+        reader.readAsDataURL(file);
+      });
+    }
+
+    const { data } = supabase.storage.from(bucketName).getPublicUrl(filePath);
+    return {
+      success: true,
+      publicUrl: data.publicUrl,
+    };
+  } catch (err: any) {
+    console.warn('KYC upload exception:', err);
+    return {
+      success: false,
+      error: err?.message || 'Failed to upload document image',
+    };
+  }
+}
+
+/**
+ * Update KYC submission details and status in Supabase `profiles` table
+ */
+export async function updateProfileKycDetails(
+  userId: string,
+  details: {
+    fullName: string;
+    nrcNumber: string;
+    phone: string;
+    nrcFrontUrl: string;
+    nrcBackUrl: string;
+    selfieUrl: string;
+    kycStatus: KycStatus;
+  }
+): Promise<{ success: boolean; error?: string }> {
+  if (!isSupabaseConfigured || !supabase) {
+    return { success: true };
+  }
+
+  try {
+    const { error } = await supabase
+      .from('profiles')
+      .update({
+        full_name: details.fullName.trim(),
+        phone: details.phone.trim(),
+        nrc_number: details.nrcNumber.trim(),
+        nrc_front_url: details.nrcFrontUrl,
+        nrc_back_url: details.nrcBackUrl,
+        selfie_url: details.selfieUrl,
+        kyc_status: details.kycStatus,
+        kyc_submitted_at: new Date().toISOString(),
+        updated_at: new Date().toISOString(),
+      })
+      .eq('id', userId);
+
+    if (error) {
+      console.warn('Supabase KYC details update note (falling back to simple kyc_status update):', error.message);
+      // Fallback in case specific columns don't exist in user schema
+      const { error: simpleError } = await supabase
+        .from('profiles')
+        .update({
+          kyc_status: details.kycStatus,
+          updated_at: new Date().toISOString(),
+        })
+        .eq('id', userId);
+
+      if (simpleError) {
+        return { success: false, error: simpleError.message };
+      }
+    }
+    return { success: true };
+  } catch (err: any) {
+    console.warn('Supabase KYC update exception:', err);
+    return { success: false, error: err?.message || 'Failed to update KYC status' };
   }
 }
 

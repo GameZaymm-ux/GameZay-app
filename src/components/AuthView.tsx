@@ -91,13 +91,6 @@ export const AuthView: React.FC<AuthViewProps> = ({
     setSuccessMessage(null);
   };
 
-  // Quick Demo Account Helper for testing
-  const handleQuickFill = (email: string, pass: string) => {
-    resetMessages();
-    setSignInEmail(email);
-    setSignInPassword(pass);
-  };
-
   // Handle Sign In Submission
   const handleSignInSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
@@ -400,42 +393,6 @@ export const AuthView: React.FC<AuthViewProps> = ({
           {/* ======================================================== */}
           {mode === 'signin' && (
             <form onSubmit={handleSignInSubmit} className="space-y-4">
-              {/* Quick Demo Autofill Notice */}
-              <div className="p-3.5 rounded-2xl bg-slate-50 dark:bg-slate-950 border border-slate-200 dark:border-slate-800">
-                <div className="flex items-center justify-between gap-2 mb-2">
-                  <div className="flex items-center gap-1.5 text-xs font-bold text-slate-700 dark:text-slate-300">
-                    <Sparkles className="w-3.5 h-3.5 text-cyan-500" />
-                    <span>{isMM ? 'စမ်းသပ်ရန် Demo အကောင့်များ' : 'Quick Demo Logins'}</span>
-                  </div>
-                  <span className="text-[10px] px-2 py-0.5 rounded-full bg-cyan-500/10 text-cyan-500 border border-cyan-500/20 font-mono font-bold">
-                    1-Click
-                  </span>
-                </div>
-                <div className="grid grid-cols-3 gap-2">
-                  <button
-                    type="button"
-                    onClick={() => handleQuickFill('buyer@gamezay.mm', 'buyer123')}
-                    className="py-1.5 px-2 rounded-xl bg-slate-200 dark:bg-slate-800 hover:bg-cyan-500/20 hover:text-cyan-500 text-[11px] font-bold text-slate-700 dark:text-slate-300 transition text-center cursor-pointer"
-                  >
-                    🎮 Buyer
-                  </button>
-                  <button
-                    type="button"
-                    onClick={() => handleQuickFill('seller@gamezay.mm', 'seller123')}
-                    className="py-1.5 px-2 rounded-xl bg-slate-200 dark:bg-slate-800 hover:bg-emerald-500/20 hover:text-emerald-500 text-[11px] font-bold text-slate-700 dark:text-slate-300 transition text-center cursor-pointer"
-                  >
-                    👑 Seller
-                  </button>
-                  <button
-                    type="button"
-                    onClick={() => handleQuickFill('admin@gamezay.mm', 'admin123')}
-                    className="py-1.5 px-2 rounded-xl bg-slate-200 dark:bg-slate-800 hover:bg-purple-500/20 hover:text-purple-500 text-[11px] font-bold text-slate-700 dark:text-slate-300 transition text-center cursor-pointer"
-                  >
-                    🛡️ Admin
-                  </button>
-                </div>
-              </div>
-
               {/* Email Input */}
               <div className="space-y-1.5">
                 <label className="text-xs font-bold text-slate-700 dark:text-slate-300 flex items-center gap-1.5">
