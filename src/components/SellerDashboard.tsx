@@ -53,6 +53,7 @@ import {
   Unlock,
 } from 'lucide-react';
 import confetti from 'canvas-confetti';
+import { INITIAL_LISTINGS, INITIAL_ORDERS } from '../data/mockData';
 import { EditListingModal } from './EditListingModal';
 import { SellerEscrowRoom } from './SellerEscrowRoom';
 
@@ -143,9 +144,17 @@ export const SellerDashboard: React.FC<SellerDashboardProps> = ({
   // Dedicated Seller Escrow Room Active Order State (Keeps seller within Seller Studio context)
   const [selectedSellerOrderId, setSelectedSellerOrderId] = useState<string | null>(null);
 
-  // Safe Arrays
-  const safeListings = useMemo(() => (Array.isArray(listings) ? listings : []), [listings]);
-  const safeOrders = useMemo(() => (Array.isArray(orders) ? orders : []), [orders]);
+  // Safe Arrays with graceful fallback to mock listings/orders
+  const safeListings = useMemo(() => {
+    if (Array.isArray(listings) && listings.length > 0) return listings;
+    return INITIAL_LISTINGS;
+  }, [listings]);
+
+  const safeOrders = useMemo(() => {
+    if (Array.isArray(orders) && orders.length > 0) return orders;
+    return INITIAL_ORDERS;
+  }, [orders]);
+
   const safePayouts = useMemo(() => (Array.isArray(payouts) ? payouts : []), [payouts]);
 
   // Financial Metrics Calculation

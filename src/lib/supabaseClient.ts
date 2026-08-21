@@ -2,39 +2,54 @@ import { createClient, SupabaseClient } from '@supabase/supabase-js';
 import { AccountListing, EscrowOrder, KycStatus, MerchantSubscription } from '../types';
 import { INITIAL_LISTINGS, INITIAL_ORDERS } from '../data/mockData';
 
-// Clean the base Supabase URL in case it has trailing '/rest/v1/' or whitespace
+// Extract raw URL and Anon Key with fallback to dummy safe strings to prevent any init exception
 const rawUrl =
   (typeof process !== 'undefined' && process.env?.NEXT_PUBLIC_SUPABASE_URL) ||
-  (typeof import.meta !== 'undefined' && (import.meta as any).env?.VITE_SUPABASE_URL) ||
+  (typeof import.meta !== 'undefined' && (import.meta as any)?.env?.VITE_SUPABASE_URL) ||
+  (typeof window !== 'undefined' && (window as any)?.__SUPABASE_URL__) ||
   'https://tusvbmvkkhiklbbggyrt.supabase.co';
 
-export const cleanSupabaseUrl = rawUrl.replace(/\/rest\/v1\/?$/, '').trim();
-
-export const supabaseAnonKey = (
+const rawKey =
   (typeof process !== 'undefined' && process.env?.NEXT_PUBLIC_SUPABASE_ANON_KEY) ||
-  (typeof import.meta !== 'undefined' && (import.meta as any).env?.VITE_SUPABASE_ANON_KEY) ||
-  'sb_publishable_4kI2gAF6qrE-OyKZ4_7m8A_5L7OcFA-'
-).trim();
+  (typeof import.meta !== 'undefined' && (import.meta as any)?.env?.VITE_SUPABASE_ANON_KEY) ||
+  (typeof window !== 'undefined' && (window as any)?.__SUPABASE_KEY__) ||
+  'sb_publishable_4kI2gAF6qrE-OyKZ4_7m8A_5L7OcFA-';
 
-export const isSupabaseConfigured = Boolean(cleanSupabaseUrl && supabaseAnonKey);
+// Sanitize URL
+const sanitizedUrl = (rawUrl || 'https://placeholder.supabase.co').replace(/\/rest\/v1\/?$/, '').trim();
+const sanitizedKey = (rawKey || 'placeholder-anon-key').trim();
 
-let clientInstance: SupabaseClient | null = null;
+// Determine if we have real credentials vs placeholder
+export const isSupabaseConfigured = Boolean(
+  sanitizedUrl &&
+  sanitizedKey &&
+  !sanitizedUrl.includes('placeholder.supabase.co') &&
+  !sanitizedKey.includes('placeholder-anon-key')
+);
 
+// Safe client instantiation: NEVER throws on import
+let safeClient: SupabaseClient;
 try {
-  if (isSupabaseConfigured) {
-    clientInstance = createClient(cleanSupabaseUrl, supabaseAnonKey, {
+  safeClient = createClient(
+    sanitizedUrl || 'https://placeholder.supabase.co',
+    sanitizedKey || 'placeholder-anon-key',
+    {
       auth: {
         persistSession: typeof window !== 'undefined',
         autoRefreshToken: typeof window !== 'undefined',
+        detectSessionInUrl: typeof window !== 'undefined',
       },
-    });
-  }
+    }
+  );
 } catch (e) {
-  console.warn('Failed to initialize Supabase client:', e);
-  clientInstance = null;
+  console.warn('Supabase initialization safely recovered with mock client:', e);
+  // Create dummy client to ensure object reference is always valid
+  safeClient = createClient('https://placeholder.supabase.co', 'placeholder-key', {
+    auth: { persistSession: false },
+  });
 }
 
-export const supabase = clientInstance;
+export const supabase: SupabaseClient = safeClient;
 
 export interface SupabaseUserProfile {
   id: string;
@@ -76,11 +91,11 @@ export const DEFAULT_USER_PROFILE: SupabaseUserProfile = {
 };
 
 /**
- * Fetch marketplace listings from Supabase `listings` table
- * Falls back safely to INITIAL_LISTINGS with complete hydration safety
+ * Safely fetches live marketplace listings from Supabase `listings` table
+ * Falls back to INITIAL_LISTINGS if not configured, network fails, or table is empty
  */
 export async function fetchLiveListings(): Promise<AccountListing[]> {
-  if (!supabase) {
+  if (!isSupabaseConfigured || !supabase) {
     return INITIAL_LISTINGS;
   }
 
@@ -91,8 +106,8 @@ export async function fetchLiveListings(): Promise<AccountListing[]> {
       .order('created_at', { ascending: false });
 
     if (error || !data || data.length === 0) {
-      if (error) {
-        console.info('Supabase listings table notice (using defaults):', error.message);
+      if (error && error.code !== 'PGRST116') {
+        console.info('Supabase listings notice (using fallback):', error.message);
       }
       return INITIAL_LISTINGS;
     }
@@ -101,11 +116,15 @@ export async function fetchLiveListings(): Promise<AccountListing[]> {
       id: item.id || `listing-${Date.now()}`,
       orderPrefix: item.order_prefix || item.orderPrefix || 'GZ-',
       gameType: item.game_type || item.gameType || 'mlbb',
-      title: item.title || 'Game Account',
+      title: item.title || item.name || 'Game Account',
       description: item.description || '',
-      priceMMK: Number(item.price_mmk || item.priceMMK || item.price || 0),
+      priceMMK: Number(item.price_mmk || item.price || item.priceMMK || 0),
       priceUSDT: Number(item.price_usdt || item.priceUSDT || 0),
-      status: (item.status?.toUpperCase() === 'SOLD' ? 'SOLD' : item.status?.toUpperCase() === 'IN_ESCROW' ? 'IN_ESCROW' : 'AVAILABLE'),
+      status: (item.status?.toUpperCase() === 'SOLD'
+        ? 'SOLD'
+        : item.status?.toUpperCase() === 'IN_ESCROW'
+        ? 'IN_ESCROW'
+        : 'AVAILABLE'),
       isVerifiedSeller: Boolean(item.is_verified_seller ?? item.isVerifiedSeller ?? true),
       isProMerchant: Boolean(item.is_pro_merchant ?? item.isProMerchant ?? false),
       bumpedAt: item.bumped_at || item.bumpedAt,
@@ -126,12 +145,12 @@ export async function fetchLiveListings(): Promise<AccountListing[]> {
       },
       bindingStatus: item.binding_status || item.bindingStatus || 'Clean Bind / Email Transferable',
       attributes: item.attributes || {},
-      imageUrls: Array.isArray(item.image_urls) && item.image_urls.length > 0
-        ? item.image_urls
-        : Array.isArray(item.images) && item.images.length > 0
+      imageUrls: Array.isArray(item.images) && item.images.length > 0
         ? item.images
+        : Array.isArray(item.image_urls) && item.image_urls.length > 0
+        ? item.image_urls
         : ['https://images.unsplash.com/photo-1542751371-adc38448a05e?w=800&auto=format&fit=crop&q=80'],
-      bannerUrl: item.banner_url || item.bannerUrl || 'https://images.unsplash.com/photo-1542751371-adc38448a05e?w=800&auto=format&fit=crop&q=80',
+      bannerUrl: item.banner_url || item.bannerUrl || (Array.isArray(item.images) && item.images[0]) || 'https://images.unsplash.com/photo-1542751371-adc38448a05e?w=800&auto=format&fit=crop&q=80',
       credentialPreview: item.credential_preview || item.credentialPreview || {
         authType: 'Moonton / Konami ID',
         maskedLogin: 'acc***@gmail.com',
@@ -144,16 +163,61 @@ export async function fetchLiveListings(): Promise<AccountListing[]> {
 
     return mapped.length > 0 ? mapped : INITIAL_LISTINGS;
   } catch (err) {
-    console.warn('Supabase fetch listings error, falling back to mock data:', err);
+    console.warn('Supabase fetch listings error, using fallback mock listings:', err);
     return INITIAL_LISTINGS;
   }
 }
 
 /**
- * Fetch orders from Supabase `orders` table
+ * Safely inserts a new listing into Supabase `listings` table if connected
+ */
+export async function createLiveListing(listing: AccountListing): Promise<{ success: boolean; data?: any; error?: string }> {
+  if (!isSupabaseConfigured || !supabase) {
+    return { success: true, data: listing };
+  }
+
+  try {
+    const payload = {
+      title: listing.title,
+      game_type: listing.gameType,
+      price: listing.priceMMK,
+      price_mmk: listing.priceMMK,
+      price_usdt: listing.priceUSDT || 0,
+      description: listing.description,
+      images: listing.imageUrls || [],
+      seller_id: listing.seller.id,
+      seller_name: listing.seller.name,
+      status: listing.status || 'AVAILABLE',
+      is_pro_merchant: listing.isProMerchant || false,
+      attributes: listing.attributes || {},
+      created_at: listing.createdAt || new Date().toISOString(),
+    };
+
+    const { data, error } = await supabase
+      .from('listings')
+      .insert([payload])
+      .select()
+      .maybeSingle();
+
+    if (error) {
+      console.warn('Supabase insert listing note (locally active):', error.message);
+      return { success: false, error: error.message };
+    }
+
+    return { success: true, data };
+  } catch (err: any) {
+    console.warn('Supabase insert listing exception (locally saved):', err);
+    return { success: false, error: err?.message || 'Insertion exception' };
+  }
+}
+
+export const insertLiveListing = createLiveListing;
+
+/**
+ * Safely fetches orders from Supabase `orders` table
  */
 export async function fetchLiveOrders(): Promise<EscrowOrder[]> {
-  if (!supabase) {
+  if (!isSupabaseConfigured || !supabase) {
     return INITIAL_ORDERS;
   }
 
@@ -199,10 +263,10 @@ export async function fetchLiveOrders(): Promise<EscrowOrder[]> {
 }
 
 /**
- * Fetch profile data for user from Supabase `profiles` table
+ * Safely fetches profile data from Supabase `profiles` table
  */
 export async function fetchLiveProfile(userId: string = 'current-user-1'): Promise<SupabaseUserProfile> {
-  if (!supabase) {
+  if (!isSupabaseConfigured || !supabase) {
     return DEFAULT_USER_PROFILE;
   }
 

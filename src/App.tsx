@@ -34,6 +34,7 @@ import {
   fetchLiveListings,
   fetchLiveOrders,
   fetchLiveProfile,
+  createLiveListing,
   isSupabaseConfigured,
   supabase,
 } from './lib/supabaseClient';
@@ -639,9 +640,18 @@ function MainApp() {
   };
 
   const handleListingCreated = (newListing: AccountListing) => {
-    setListings([newListing, ...listings]);
+    setListings((prev) => [newListing, ...prev]);
     setSelectedGame(newListing.gameType);
     setCurrentTab('marketplace');
+
+    // Asynchronously sync with Supabase if available
+    try {
+      createLiveListing(newListing).catch((err) => {
+        console.warn('Background Supabase listing sync gracefully skipped:', err);
+      });
+    } catch {
+      // ignore
+    }
   };
 
   return (
