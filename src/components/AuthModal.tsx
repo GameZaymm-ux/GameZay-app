@@ -41,6 +41,15 @@ export const AuthModal: React.FC<AuthModalProps> = ({
 }) => {
   const { isMM, t } = useLanguage();
   const [mode, setMode] = useState<'signin' | 'signup'>(initialMode);
+
+  // Sync mode whenever modal is opened with a specific mode (e.g. Sign In vs Sign Up)
+  React.useEffect(() => {
+    if (isOpen) {
+      setMode(initialMode);
+      setErrorMessage(null);
+      setSuccessMessage(null);
+    }
+  }, [isOpen, initialMode]);
   
   // Sign In Form State
   const [signInEmail, setSignInEmail] = useState('');

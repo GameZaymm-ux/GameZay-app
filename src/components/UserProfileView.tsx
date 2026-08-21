@@ -66,12 +66,12 @@ export const UserProfileView: React.FC<UserProfileViewProps> = ({
     }, 3000);
   };
 
-  const displayName = authUser?.fullName || 'Ko Min Thant';
-  const displayUsername = authUser?.username || 'KyawZin_Gamer99';
-  const displayEmail = authUser?.email || 'gamezaymm@gmail.com';
-  const displayPhone = authUser?.phone || '+95 9 450 012 345';
-  const displayAvatar = authUser?.avatarUrl || 'https://images.unsplash.com/photo-1566492031773-4f4e44671857?w=300&auto=format&fit=crop&q=80';
-  const activeKyc = authUser?.kycStatus || kycStatus;
+  const displayName = authUser?.fullName || (isMM ? 'ဧည့်သည် (အကောင့်မဝင်ထားပါ)' : 'Guest (Logged Out)');
+  const displayUsername = authUser?.username || 'Guest';
+  const displayEmail = authUser?.email || (isMM ? 'အကောင့်ဝင်ရန် လိုအပ်သည်' : 'Not signed in');
+  const displayPhone = authUser?.phone || '-';
+  const displayAvatar = authUser?.avatarUrl || 'https://images.unsplash.com/photo-1535713875002-d1d0cf377fde?w=300&auto=format&fit=crop&q=80';
+  const activeKyc = authUser?.kycStatus || 'UNSUBMITTED';
 
   return (
     <div className="w-full max-w-4xl mx-auto px-4 sm:px-6 lg:px-8 py-6 space-y-6 animate-in fade-in duration-200">
@@ -423,40 +423,61 @@ export const UserProfileView: React.FC<UserProfileViewProps> = ({
       </div>
 
       {/* ======================================================== */}
-      {/* 4. LOG OUT BUTTON                                        */}
+      {/* 4. AUTH & LOG OUT SECTION                                */}
       {/* ======================================================== */}
       <div className="pt-2">
-        {showLogoutConfirm ? (
-          <div className="p-5 rounded-3xl bg-rose-500/10 border border-rose-500/30 space-y-3 animate-in fade-in">
-            <p className="text-xs font-bold text-rose-500 dark:text-rose-400 text-center">
-              {t('profile.logoutConfirm')}
-            </p>
-            <div className="flex items-center justify-center gap-3">
-              <button
-                type="button"
-                onClick={() => setShowLogoutConfirm(false)}
-                className="px-4 py-2 rounded-xl bg-slate-200 dark:bg-slate-800 text-slate-700 dark:text-slate-300 text-xs font-bold hover:bg-slate-300 dark:hover:bg-slate-700 transition cursor-pointer"
-              >
-                {isMM ? 'မထွက်ပါ' : 'Cancel'}
-              </button>
-              <button
-                type="button"
-                onClick={handleLogout}
-                className="px-5 py-2 rounded-xl bg-rose-600 hover:bg-rose-500 text-white text-xs font-black shadow-lg shadow-rose-600/30 transition cursor-pointer"
-              >
-                {isMM ? 'သေချာသည်၊ ထွက်မည်' : 'Yes, Log Out'}
-              </button>
+        {authUser ? (
+          showLogoutConfirm ? (
+            <div className="p-5 rounded-3xl bg-rose-500/10 border border-rose-500/30 space-y-3 animate-in fade-in">
+              <p className="text-xs font-bold text-rose-500 dark:text-rose-400 text-center">
+                {t('profile.logoutConfirm')}
+              </p>
+              <div className="flex items-center justify-center gap-3">
+                <button
+                  type="button"
+                  onClick={() => setShowLogoutConfirm(false)}
+                  className="px-4 py-2 rounded-xl bg-slate-200 dark:bg-slate-800 text-slate-700 dark:text-slate-300 text-xs font-bold hover:bg-slate-300 dark:hover:bg-slate-700 transition cursor-pointer"
+                >
+                  {isMM ? 'မထွက်ပါ' : 'Cancel'}
+                </button>
+                <button
+                  type="button"
+                  onClick={handleLogout}
+                  className="px-5 py-2 rounded-xl bg-rose-600 hover:bg-rose-500 text-white text-xs font-black shadow-lg shadow-rose-600/30 transition cursor-pointer"
+                >
+                  {isMM ? 'သေချာသည်၊ ထွက်မည်' : 'Yes, Log Out'}
+                </button>
+              </div>
             </div>
-          </div>
+          ) : (
+            <button
+              type="button"
+              onClick={() => setShowLogoutConfirm(true)}
+              className="w-full py-3.5 rounded-2xl bg-white dark:bg-slate-900 border border-rose-200 dark:border-rose-900/40 text-rose-600 dark:text-rose-400 hover:bg-rose-50 dark:hover:bg-rose-950/40 text-xs sm:text-sm font-bold transition flex items-center justify-center gap-2 cursor-pointer shadow-sm active:scale-98"
+            >
+              <LogOut className="w-4 h-4" />
+              <span>{t('profile.logout')}</span>
+            </button>
+          )
         ) : (
-          <button
-            type="button"
-            onClick={() => setShowLogoutConfirm(true)}
-            className="w-full py-3.5 rounded-2xl bg-white dark:bg-slate-900 border border-rose-200 dark:border-rose-900/40 text-rose-600 dark:text-rose-400 hover:bg-rose-50 dark:hover:bg-rose-950/40 text-xs sm:text-sm font-bold transition flex items-center justify-center gap-2 cursor-pointer shadow-sm active:scale-98"
-          >
-            <LogOut className="w-4 h-4" />
-            <span>{t('profile.logout')}</span>
-          </button>
+          <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
+            <button
+              type="button"
+              onClick={() => onOpenAuthModal && onOpenAuthModal('signin')}
+              className="py-3.5 px-4 rounded-2xl bg-cyan-500 hover:bg-cyan-400 text-slate-950 font-black text-xs sm:text-sm shadow-md shadow-cyan-500/20 transition flex items-center justify-center gap-2 cursor-pointer active:scale-98"
+            >
+              <LogIn className="w-4 h-4" />
+              <span>{isMM ? 'အကောင့်ဝင်မည်' : 'Sign In'}</span>
+            </button>
+            <button
+              type="button"
+              onClick={() => onOpenAuthModal && onOpenAuthModal('signup')}
+              className="py-3.5 px-4 rounded-2xl bg-slate-200 dark:bg-slate-800 hover:bg-slate-300 dark:hover:bg-slate-700 text-slate-800 dark:text-slate-200 font-bold text-xs sm:text-sm transition flex items-center justify-center gap-2 cursor-pointer active:scale-98"
+            >
+              <Sparkles className="w-4 h-4 text-emerald-500" />
+              <span>{isMM ? 'အကောင့်သစ်ဖွင့်မည်' : 'Sign Up (Create Account)'}</span>
+            </button>
+          </div>
         )}
       </div>
     </div>

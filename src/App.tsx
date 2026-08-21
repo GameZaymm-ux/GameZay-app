@@ -116,7 +116,7 @@ function MainApp() {
   const [payouts, setPayouts] = useState<SellerPayoutRequest[]>(INITIAL_PAYOUTS);
 
   // KYC Verification State
-  const [kycStatus, setKycStatus] = useState<KycStatus>('VERIFIED');
+  const [kycStatus, setKycStatus] = useState<KycStatus>('UNSUBMITTED');
   const [kycSubmissions, setKycSubmissions] = useState<KycSubmission[]>(INITIAL_KYC_SUBMISSIONS);
   const [isKycModalOpen, setIsKycModalOpen] = useState(false);
   const [isKycRequiredModalOpen, setIsKycRequiredModalOpen] = useState(false);
@@ -129,23 +129,8 @@ function MainApp() {
   const [isSettingsOpen, setIsSettingsOpen] = useState(false);
   const [savedListingIds, setSavedListingIds] = useState<string[]>(['ef-02', 'ml-01', 'pubg-01']);
 
-  // Authentication & User Profile State
-  const [authUser, setAuthUser] = useState<AuthUser | null>({
-    id: 'current-user-1',
-    email: 'gamezaymm@gmail.com',
-    fullName: 'Ko Min Thant',
-    username: 'KyawZin_Gamer99',
-    phone: '+95 9 450 012 345',
-    avatarUrl: 'https://images.unsplash.com/photo-1566492031773-4f4e44671857?w=300&auto=format&fit=crop&q=80',
-    kycStatus: 'VERIFIED',
-    isProMerchant: true,
-    role: 'BUYER',
-    balanceMMK: 850000,
-    heldInEscrowMMK: 320000,
-    sellerRating: 4.95,
-    totalRatings: 38,
-    createdAt: '2024-08-01T00:00:00Z',
-  });
+  // Authentication & User Profile State - Default is completely null (Guest Mode / Logged Out)
+  const [authUser, setAuthUser] = useState<AuthUser | null>(null);
   const [isAuthModalOpen, setIsAuthModalOpen] = useState(false);
   const [authModalMode, setAuthModalMode] = useState<'signin' | 'signup'>('signin');
 
@@ -155,10 +140,9 @@ function MainApp() {
 
     async function loadSupabaseData() {
       try {
-        const [liveListings, liveOrders, liveProfile] = await Promise.all([
+        const [liveListings, liveOrders] = await Promise.all([
           fetchLiveListings(),
           fetchLiveOrders(),
-          fetchLiveProfile('current-user-1'),
         ]);
 
         if (isMounted) {
@@ -167,27 +151,6 @@ function MainApp() {
           }
           if (liveOrders && liveOrders.length > 0) {
             setOrders(liveOrders);
-          }
-          if (liveProfile) {
-            if (liveProfile.kycStatus) {
-              setKycStatus(liveProfile.kycStatus);
-            }
-            if (liveProfile.subscription) {
-              setMerchantSubscription(liveProfile.subscription);
-            }
-            setAuthUser((prev) =>
-              prev
-                ? {
-                    ...prev,
-                    fullName: liveProfile.name || prev.fullName,
-                    username: liveProfile.username || prev.username,
-                    phone: liveProfile.phone || prev.phone,
-                    kycStatus: liveProfile.kycStatus || prev.kycStatus,
-                    balanceMMK: liveProfile.balanceMMK ?? prev.balanceMMK,
-                    heldInEscrowMMK: liveProfile.heldInEscrowMMK ?? prev.heldInEscrowMMK,
-                  }
-                : null
-            );
           }
         }
       } catch (err) {
@@ -318,6 +281,8 @@ function MainApp() {
       await signOutFromSupabase();
     } catch {}
     setAuthUser(null);
+    setKycStatus('UNSUBMITTED');
+    setMerchantSubscription(undefined);
   };
 
 
