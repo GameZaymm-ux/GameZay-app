@@ -80,6 +80,8 @@ export const supabase: SupabaseClient = safeClient;
 export interface SupabaseUserProfile {
   id: string;
   name: string;
+  username?: string;
+  email?: string;
   phone: string;
   kycStatus: KycStatus;
   isProMerchant: boolean;
@@ -95,6 +97,8 @@ export interface SupabaseUserProfile {
 export const DEFAULT_USER_PROFILE: SupabaseUserProfile = {
   id: 'current-user-1',
   name: 'Ko Min Thant',
+  username: 'KyawZin_Gamer99',
+  email: 'gamezaymm@gmail.com',
   phone: '09798889901',
   kycStatus: 'VERIFIED',
   isProMerchant: true,
@@ -115,6 +119,153 @@ export const DEFAULT_USER_PROFILE: SupabaseUserProfile = {
     autoRenew: true,
   },
 };
+
+/**
+ * Sign up a new user using Supabase Auth and optionally creates their row in `profiles`
+ */
+export async function signUpWithSupabase(
+  email: string,
+  password: string,
+  fullName: string,
+  username: string,
+  phone?: string
+): Promise<{ success: boolean; user?: any; session?: any; error?: string; isFallback?: boolean }> {
+  if (!isSupabaseConfigured || !supabase) {
+    // Offline / demo fallback user creation
+    const fallbackUser = {
+      id: `usr-${Date.now()}`,
+      email: email.trim(),
+      user_metadata: {
+        full_name: fullName.trim(),
+        username: username.trim() || email.split('@')[0],
+        phone: phone || '',
+      },
+    };
+    return {
+      success: true,
+      user: fallbackUser,
+      session: { user: fallbackUser, access_token: 'mock-token' },
+      isFallback: true,
+    };
+  }
+
+  try {
+    const { data, error } = await supabase.auth.signUp({
+      email: email.trim(),
+      password: password,
+      options: {
+        data: {
+          full_name: fullName.trim(),
+          username: username.trim() || email.split('@')[0],
+          phone: phone?.trim() || '',
+        },
+      },
+    });
+
+    if (error) {
+      return { success: false, error: error.message };
+    }
+
+    if (data.user) {
+      // Upsert into `profiles` table safely
+      try {
+        await supabase.from('profiles').upsert(
+          {
+            id: data.user.id,
+            full_name: fullName.trim(),
+            username: username.trim() || email.split('@')[0],
+            email: email.trim(),
+            phone: phone?.trim() || '',
+            kyc_status: 'UNSUBMITTED',
+            is_pro_merchant: false,
+            balance_mmk: 0,
+            held_in_escrow_mmk: 0,
+            seller_rating: 5.0,
+            total_ratings: 0,
+          },
+          { onConflict: 'id' }
+        );
+      } catch (profileErr) {
+        console.warn('Non-fatal profile creation notice:', profileErr);
+      }
+    }
+
+    return {
+      success: true,
+      user: data.user,
+      session: data.session,
+    };
+  } catch (err: any) {
+    return { success: false, error: err?.message || 'Authentication error during sign up' };
+  }
+}
+
+/**
+ * Sign in existing user using Supabase Auth with password
+ */
+export async function signInWithSupabase(
+  email: string,
+  password: string
+): Promise<{ success: boolean; user?: any; session?: any; error?: string; isFallback?: boolean }> {
+  if (!isSupabaseConfigured || !supabase) {
+    // Offline / Demo fallback authentication
+    const cleanEmail = email.trim();
+    const fallbackUser = {
+      id: cleanEmail === 'gamezaymm@gmail.com' ? 'current-user-1' : `usr-${Math.abs(cleanEmail.split('').reduce((acc, c) => acc + c.charCodeAt(0), 0))}`,
+      email: cleanEmail,
+      user_metadata: {
+        full_name: cleanEmail === 'gamezaymm@gmail.com' ? 'Ko Min Thant' : cleanEmail.split('@')[0],
+        username: cleanEmail === 'gamezaymm@gmail.com' ? 'KyawZin_Gamer99' : cleanEmail.split('@')[0],
+        phone: '09798889901',
+      },
+    };
+    return {
+      success: true,
+      user: fallbackUser,
+      session: { user: fallbackUser, access_token: 'mock-token' },
+      isFallback: true,
+    };
+  }
+
+  try {
+    const { data, error } = await supabase.auth.signInWithPassword({
+      email: email.trim(),
+      password: password,
+    });
+
+    if (error) {
+      return { success: false, error: error.message };
+    }
+
+    return {
+      success: true,
+      user: data.user,
+      session: data.session,
+    };
+  } catch (err: any) {
+    return { success: false, error: err?.message || 'Failed to sign in' };
+  }
+}
+
+/**
+ * Sign out current user from Supabase Auth
+ */
+export async function signOutFromSupabase(): Promise<{ success: boolean; error?: string }> {
+  if (!isSupabaseConfigured || !supabase) {
+    return { success: true };
+  }
+
+  try {
+    const { error } = await supabase.auth.signOut();
+    if (error) {
+      return { success: false, error: error.message };
+    }
+    return { success: true };
+  } catch (err: any) {
+    return { success: false, error: err?.message || 'Failed to sign out' };
+  }
+}
+
 
 /**
  * Safely fetches live marketplace listings from Supabase `listings` table
@@ -320,6 +471,8 @@ export async function fetchLiveProfile(userId: string = 'current-user-1'): Promi
     return {
       id: data.id || DEFAULT_USER_PROFILE.id,
       name: data.full_name || data.name || DEFAULT_USER_PROFILE.name,
+      username: data.username || DEFAULT_USER_PROFILE.username,
+      email: data.email || DEFAULT_USER_PROFILE.email,
       phone: data.phone || DEFAULT_USER_PROFILE.phone,
       kycStatus: (data.kyc_status as KycStatus) || DEFAULT_USER_PROFILE.kycStatus,
       isProMerchant: Boolean(data.is_pro_merchant ?? DEFAULT_USER_PROFILE.isProMerchant),

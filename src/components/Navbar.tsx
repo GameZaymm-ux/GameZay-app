@@ -1,7 +1,7 @@
 import React from 'react';
 import { useLanguage } from '../context/LanguageContext';
 import { useTheme } from '../context/ThemeContext';
-import { UserRole } from '../types';
+import { KycStatus, UserRole, AuthUser } from '../types';
 import {
   ShieldCheck,
   Gamepad2,
@@ -22,6 +22,9 @@ import {
   MessageCircle,
   Home,
   Globe,
+  LogIn,
+  LogOut,
+  Crown,
 } from 'lucide-react';
 
 interface NavbarProps {
@@ -36,6 +39,9 @@ interface NavbarProps {
   onOpenNotifications?: () => void;
   unreadNotificationsCount?: number;
   ordersCount: number;
+  authUser?: AuthUser | null;
+  onOpenAuthModal?: (mode?: 'signin' | 'signup') => void;
+  onSignOut?: () => void;
 }
 
 export const Navbar: React.FC<NavbarProps> = ({
@@ -50,7 +56,11 @@ export const Navbar: React.FC<NavbarProps> = ({
   onOpenNotifications,
   unreadNotificationsCount = 3,
   ordersCount,
+  authUser,
+  onOpenAuthModal,
+  onSignOut,
 }) => {
+
   const { t, isMM, language, toggleLanguage, currency, setCurrency } = useLanguage();
   const { actualTheme, toggleTheme } = useTheme();
 
@@ -295,23 +305,59 @@ export const Navbar: React.FC<NavbarProps> = ({
               <MessageCircle className="w-4 h-4 sm:w-5 sm:h-5 text-cyan-500" />
             </button>
 
-            {/* 7. TOP RIGHT: User Profile Avatar */}
-            <button
-              type="button"
-              onClick={() => setCurrentTab('profile')}
-              className={`p-1 sm:p-1.5 rounded-xl transition cursor-pointer flex items-center gap-1.5 ${
-                currentTab === 'profile'
-                  ? 'ring-2 ring-cyan-500 bg-cyan-500/10'
-                  : 'hover:bg-slate-100 dark:hover:bg-slate-900'
-              }`}
-              title="User Profile"
-            >
-              <img
-                src="https://images.unsplash.com/photo-1566492031773-4f4e44671857?w=150&auto=format&fit=crop&q=80"
-                alt="user"
-                className="w-7 h-7 sm:w-8 sm:h-8 rounded-full object-cover border-2 border-cyan-400"
-              />
-            </button>
+            {/* 7. TOP RIGHT: Auth State (Sign In Button vs User Avatar & Dropdown) */}
+            {authUser ? (
+              <div className="flex items-center gap-1">
+                <button
+                  type="button"
+                  onClick={() => setCurrentTab('profile')}
+                  className={`p-1 sm:p-1.5 rounded-xl transition cursor-pointer flex items-center gap-1.5 ${
+                    currentTab === 'profile'
+                      ? 'ring-2 ring-cyan-500 bg-cyan-500/10'
+                      : 'hover:bg-slate-100 dark:hover:bg-slate-900'
+                  }`}
+                  title={`${authUser.fullName} (${authUser.username})`}
+                >
+                  <div className="relative">
+                    <img
+                      src={authUser.avatarUrl || "https://images.unsplash.com/photo-1566492031773-4f4e44671857?w=150&auto=format&fit=crop&q=80"}
+                      alt="user"
+                      className="w-7 h-7 sm:w-8 sm:h-8 rounded-full object-cover border-2 border-cyan-400"
+                    />
+                    {authUser.kycStatus === 'VERIFIED' && (
+                      <span className="absolute -bottom-0.5 -right-0.5 w-3 h-3 bg-emerald-500 rounded-full border border-slate-950 flex items-center justify-center text-[7px] text-slate-950 font-black">
+                        ✓
+                      </span>
+                    )}
+                  </div>
+                  <span className="hidden xl:inline-block text-xs font-bold text-slate-800 dark:text-slate-200 max-w-[100px] truncate">
+                    {authUser.username || authUser.fullName}
+                  </span>
+                </button>
+
+                {onSignOut && (
+                  <button
+                    type="button"
+                    onClick={onSignOut}
+                    className="hidden lg:flex p-1.5 rounded-lg text-slate-400 hover:text-rose-400 hover:bg-rose-500/10 transition cursor-pointer"
+                    title={isMM ? 'အကောင့်မှထွက်ရန်' : 'Sign Out'}
+                    aria-label="Sign Out"
+                  >
+                    <LogOut className="w-3.5 h-3.5" />
+                  </button>
+                )}
+              </div>
+            ) : (
+              <button
+                type="button"
+                onClick={() => onOpenAuthModal && onOpenAuthModal('signin')}
+                className="flex items-center gap-1.5 px-3 py-1.5 sm:py-2 rounded-xl text-xs sm:text-sm font-bold bg-cyan-500/10 hover:bg-cyan-500/20 text-cyan-600 dark:text-cyan-400 border border-cyan-500/30 transition cursor-pointer shadow-sm"
+              >
+                <LogIn className="w-4 h-4" />
+                <span className="hidden sm:inline">{isMM ? 'အကောင့်ဝင်ရန်' : 'Sign In'}</span>
+                <span className="sm:hidden">{isMM ? 'ဝင်ရန်' : 'Login'}</span>
+              </button>
+            )}
 
             {/* 8. TOP RIGHT: Settings Quick Icon */}
             <button
@@ -333,6 +379,7 @@ export const Navbar: React.FC<NavbarProps> = ({
               <PlusCircle className="w-4 h-4" />
               <span>{t('nav.sellAccount')}</span>
             </button>
+
           </nav>
         </div>
       </div>

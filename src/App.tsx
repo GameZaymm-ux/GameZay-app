@@ -22,6 +22,7 @@ import { RecommendedMerchantsCarousel } from './components/RecommendedMerchantsC
 import { NotificationsModal } from './components/NotificationsModal';
 import { UserProfileView } from './components/UserProfileView';
 import { SettingsModal } from './components/SettingsModal';
+import { AuthModal } from './components/AuthModal';
 import { KycVerificationModal } from './components/KycVerificationModal';
 import { KycRequiredModal, KycPendingModal } from './components/KycGateModals';
 import { MobileBottomNav } from './components/MobileBottomNav';
@@ -35,6 +36,7 @@ import {
   fetchLiveOrders,
   fetchLiveProfile,
   createLiveListing,
+  signOutFromSupabase,
   isSupabaseConfigured,
   supabase,
 } from './lib/supabaseClient';
@@ -50,7 +52,9 @@ import {
   SellerPayoutRequest,
   UserRole,
   MerchantSubscription,
+  AuthUser,
 } from './types';
+
 import {
   Filter,
   ArrowUpDown,
@@ -125,6 +129,26 @@ function MainApp() {
   const [isSettingsOpen, setIsSettingsOpen] = useState(false);
   const [savedListingIds, setSavedListingIds] = useState<string[]>(['ef-02', 'ml-01', 'pubg-01']);
 
+  // Authentication & User Profile State
+  const [authUser, setAuthUser] = useState<AuthUser | null>({
+    id: 'current-user-1',
+    email: 'gamezaymm@gmail.com',
+    fullName: 'Ko Min Thant',
+    username: 'KyawZin_Gamer99',
+    phone: '+95 9 450 012 345',
+    avatarUrl: 'https://images.unsplash.com/photo-1566492031773-4f4e44671857?w=300&auto=format&fit=crop&q=80',
+    kycStatus: 'VERIFIED',
+    isProMerchant: true,
+    role: 'BUYER',
+    balanceMMK: 850000,
+    heldInEscrowMMK: 320000,
+    sellerRating: 4.95,
+    totalRatings: 38,
+    createdAt: '2024-08-01T00:00:00Z',
+  });
+  const [isAuthModalOpen, setIsAuthModalOpen] = useState(false);
+  const [authModalMode, setAuthModalMode] = useState<'signin' | 'signup'>('signin');
+
   // Fetch live Supabase data on mount with full SSR / fallback protection
   useEffect(() => {
     let isMounted = true;
@@ -151,6 +175,19 @@ function MainApp() {
             if (liveProfile.subscription) {
               setMerchantSubscription(liveProfile.subscription);
             }
+            setAuthUser((prev) =>
+              prev
+                ? {
+                    ...prev,
+                    fullName: liveProfile.name || prev.fullName,
+                    username: liveProfile.username || prev.username,
+                    phone: liveProfile.phone || prev.phone,
+                    kycStatus: liveProfile.kycStatus || prev.kycStatus,
+                    balanceMMK: liveProfile.balanceMMK ?? prev.balanceMMK,
+                    heldInEscrowMMK: liveProfile.heldInEscrowMMK ?? prev.heldInEscrowMMK,
+                  }
+                : null
+            );
           }
         }
       } catch (err) {
@@ -159,6 +196,44 @@ function MainApp() {
     }
 
     loadSupabaseData();
+
+    // Listen to Supabase Auth State Changes
+    let authSubscription: any = null;
+    try {
+      if (supabase && typeof window !== 'undefined') {
+        const { data: listener } = supabase.auth.onAuthStateChange(async (event, session) => {
+          if (!isMounted) return;
+          if ((event === 'SIGNED_IN' || event === 'USER_UPDATED') && session?.user) {
+            const user = session.user;
+            const profile = await fetchLiveProfile(user.id);
+            if (isMounted) {
+              setAuthUser({
+                id: user.id,
+                email: user.email || '',
+                fullName: user.user_metadata?.full_name || profile.name || 'Gamer',
+                username: user.user_metadata?.username || profile.username || 'KyawZin_MM',
+                phone: user.user_metadata?.phone || profile.phone || '09798889901',
+                avatarUrl: user.user_metadata?.avatar_url || 'https://images.unsplash.com/photo-1566492031773-4f4e44671857?w=300&auto=format&fit=crop&q=80',
+                kycStatus: profile.kycStatus || 'VERIFIED',
+                isProMerchant: profile.isProMerchant ?? true,
+                role: userRole,
+                balanceMMK: profile.balanceMMK ?? 850000,
+                heldInEscrowMMK: profile.heldInEscrowMMK ?? 320000,
+                sellerRating: profile.sellerRating ?? 4.95,
+                totalRatings: profile.totalRatings ?? 38,
+              });
+              if (profile.kycStatus) setKycStatus(profile.kycStatus);
+              if (profile.subscription) setMerchantSubscription(profile.subscription);
+            }
+          } else if (event === 'SIGNED_OUT') {
+            if (isMounted) setAuthUser(null);
+          }
+        });
+        authSubscription = listener?.subscription;
+      }
+    } catch (authErr) {
+      console.warn('Supabase auth state listener fallback notice:', authErr);
+    }
 
     // Setup Supabase Realtime channel if available
     let channel: any = null;
@@ -179,11 +254,72 @@ function MainApp() {
 
     return () => {
       isMounted = false;
+      if (authSubscription) {
+        authSubscription.unsubscribe();
+      }
       if (channel && supabase) {
         supabase.removeChannel(channel).catch(() => {});
       }
     };
-  }, []);
+  }, [userRole]);
+
+  // Auth Handler functions
+  const handleOpenAuthModal = (mode: 'signin' | 'signup' = 'signin') => {
+    setAuthModalMode(mode);
+    setIsAuthModalOpen(true);
+  };
+
+  const handleAuthSuccess = async (userData: {
+    id: string;
+    email: string;
+    fullName: string;
+    username: string;
+    phone?: string;
+  }) => {
+    try {
+      const profile = await fetchLiveProfile(userData.id);
+      setAuthUser({
+        id: userData.id,
+        email: userData.email,
+        fullName: userData.fullName || profile.name,
+        username: userData.username || profile.username || userData.email.split('@')[0],
+        phone: userData.phone || profile.phone || '09798889901',
+        avatarUrl: 'https://images.unsplash.com/photo-1566492031773-4f4e44671857?w=300&auto=format&fit=crop&q=80',
+        kycStatus: profile.kycStatus || 'VERIFIED',
+        isProMerchant: profile.isProMerchant ?? true,
+        role: userRole,
+        balanceMMK: profile.balanceMMK ?? 850000,
+        heldInEscrowMMK: profile.heldInEscrowMMK ?? 320000,
+        sellerRating: profile.sellerRating ?? 4.95,
+        totalRatings: profile.totalRatings ?? 38,
+      });
+      if (profile.kycStatus) setKycStatus(profile.kycStatus);
+    } catch {
+      setAuthUser({
+        id: userData.id,
+        email: userData.email,
+        fullName: userData.fullName,
+        username: userData.username,
+        phone: userData.phone || '09798889901',
+        avatarUrl: 'https://images.unsplash.com/photo-1566492031773-4f4e44671857?w=300&auto=format&fit=crop&q=80',
+        kycStatus: 'VERIFIED',
+        isProMerchant: true,
+        role: userRole,
+        balanceMMK: 850000,
+        heldInEscrowMMK: 320000,
+        sellerRating: 4.95,
+        totalRatings: 38,
+      });
+    }
+  };
+
+  const handleSignOut = async () => {
+    try {
+      await signOutFromSupabase();
+    } catch {}
+    setAuthUser(null);
+  };
+
 
   // KYC Gate Check Handler for Selling Accounts (+ Button)
   const handleOpenSellModal = () => {
@@ -672,7 +808,11 @@ function MainApp() {
         onOpenNotifications={() => setIsNotificationsOpen(true)}
         unreadNotificationsCount={3}
         ordersCount={orders.filter((o) => o.status !== 'COMPLETED').length}
+        authUser={authUser}
+        onOpenAuthModal={handleOpenAuthModal}
+        onSignOut={handleSignOut}
       />
+
 
       {/* Main Body Content */}
       <div className={`flex-1 overflow-y-auto ${currentTab === 'home' ? 'pb-20 sm:pb-16 md:pb-8' : 'pb-20 sm:pb-16 md:pb-6'}`}>
@@ -1187,7 +1327,11 @@ function MainApp() {
               userRole={userRole}
               onNavigateToSellerStudio={() => setCurrentTab('seller')}
               merchantSubscription={merchantSubscription}
+              authUser={authUser}
+              onOpenAuthModal={handleOpenAuthModal}
+              onLogout={handleSignOut}
             />
+
           </ErrorBoundary>
         )}
       </div>
@@ -1291,9 +1435,18 @@ function MainApp() {
         isOpen={isKycPendingModalOpen}
         onClose={() => setIsKycPendingModalOpen(false)}
       />
+
+      {/* Supabase Authentication Modal (Sign In / Sign Up) */}
+      <AuthModal
+        isOpen={isAuthModalOpen}
+        onClose={() => setIsAuthModalOpen(false)}
+        initialMode={authModalMode}
+        onAuthSuccess={handleAuthSuccess}
+      />
     </div>
   );
 }
+
 
 export default function App() {
   return (

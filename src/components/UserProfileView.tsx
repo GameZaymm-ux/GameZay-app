@@ -1,7 +1,7 @@
 import React, { useState } from 'react';
 import { useLanguage } from '../context/LanguageContext';
 import { useTheme } from '../context/ThemeContext';
-import { KycStatus, UserRole, MerchantSubscription } from '../types';
+import { KycStatus, UserRole, MerchantSubscription, AuthUser } from '../types';
 import {
   ShieldCheck,
   ShieldAlert,
@@ -23,6 +23,8 @@ import {
   User,
   Key,
   Crown,
+  LogIn,
+  Wallet,
 } from 'lucide-react';
 
 interface UserProfileViewProps {
@@ -32,6 +34,9 @@ interface UserProfileViewProps {
   userRole?: UserRole;
   onNavigateToSellerStudio?: () => void;
   merchantSubscription?: MerchantSubscription;
+  authUser?: AuthUser | null;
+  onOpenAuthModal?: (mode?: 'signin' | 'signup') => void;
+  onLogout?: () => void;
 }
 
 export const UserProfileView: React.FC<UserProfileViewProps> = ({
@@ -41,6 +46,9 @@ export const UserProfileView: React.FC<UserProfileViewProps> = ({
   userRole = 'BUYER',
   onNavigateToSellerStudio,
   merchantSubscription,
+  authUser,
+  onOpenAuthModal,
+  onLogout,
 }) => {
   const { t, language, setLanguage, currency, setCurrency, isMM } = useLanguage();
   const { theme, setTheme, actualTheme } = useTheme();
@@ -49,11 +57,21 @@ export const UserProfileView: React.FC<UserProfileViewProps> = ({
 
   const handleLogout = () => {
     setShowLogoutConfirm(false);
+    if (onLogout) {
+      onLogout();
+    }
     setLoggedOutNotice(true);
     setTimeout(() => {
       setLoggedOutNotice(false);
     }, 3000);
   };
+
+  const displayName = authUser?.fullName || 'Ko Min Thant';
+  const displayUsername = authUser?.username || 'KyawZin_Gamer99';
+  const displayEmail = authUser?.email || 'gamezaymm@gmail.com';
+  const displayPhone = authUser?.phone || '+95 9 450 012 345';
+  const displayAvatar = authUser?.avatarUrl || 'https://images.unsplash.com/photo-1566492031773-4f4e44671857?w=300&auto=format&fit=crop&q=80';
+  const activeKyc = authUser?.kycStatus || kycStatus;
 
   return (
     <div className="w-full max-w-4xl mx-auto px-4 sm:px-6 lg:px-8 py-6 space-y-6 animate-in fade-in duration-200">
@@ -62,9 +80,42 @@ export const UserProfileView: React.FC<UserProfileViewProps> = ({
         <div className="p-4 rounded-2xl bg-emerald-500/10 border border-emerald-500/30 text-emerald-600 dark:text-emerald-400 text-xs font-bold flex items-center justify-between animate-in slide-in-from-top">
           <div className="flex items-center gap-2">
             <Check className="w-4 h-4" />
-            <span>{isMM ? 'အကောင့်မှ အောင်မြင်စွာ ထွက်ပြီးပါပြီ။ Demo မုဒ်ဖြင့် ဆက်လက်ကြည့်ရှုနိုင်ပါသည်။' : 'Logged out successfully. You can continue browsing as guest.'}</span>
+            <span>{isMM ? 'အကောင့်မှ အောင်မြင်စွာ ထွက်ပြီးပါပြီ။' : 'Logged out successfully.'}</span>
           </div>
           <button onClick={() => setLoggedOutNotice(false)} className="text-slate-400 hover:text-white">✕</button>
+        </div>
+      )}
+
+      {/* Guest Mode Banner if not logged in */}
+      {!authUser && (
+        <div className="p-5 rounded-3xl bg-gradient-to-r from-cyan-500/15 via-teal-500/10 to-emerald-500/15 border border-cyan-500/30 flex flex-col sm:flex-row items-center justify-between gap-4">
+          <div className="flex items-center gap-3 text-center sm:text-left">
+            <div className="w-10 h-10 rounded-2xl bg-cyan-500/20 text-cyan-500 flex items-center justify-center shrink-0">
+              <LogIn className="w-5 h-5" />
+            </div>
+            <div>
+              <h4 className="text-sm font-bold text-slate-900 dark:text-white">
+                {isMM ? 'GameZay.MM အကောင့်ဖြင့် ဝင်ရောက်ပါ' : 'Sign in to GameZay.MM'}
+              </h4>
+              <p className="text-xs text-slate-600 dark:text-slate-400">
+                {isMM ? 'Escrow အရောင်းအဝယ်များနှင့် အကောင့်မှတ်တမ်းများကို သိမ်းဆည်းရန်' : 'Save your verified orders, wallets, and escrow ratings'}
+              </p>
+            </div>
+          </div>
+          <div className="flex items-center gap-2 shrink-0">
+            <button
+              onClick={() => onOpenAuthModal && onOpenAuthModal('signin')}
+              className="px-4 py-2 rounded-xl bg-cyan-500 hover:bg-cyan-400 text-slate-950 font-black text-xs shadow-md shadow-cyan-500/20 transition cursor-pointer"
+            >
+              {isMM ? 'အကောင့်ဝင်မည်' : 'Sign In'}
+            </button>
+            <button
+              onClick={() => onOpenAuthModal && onOpenAuthModal('signup')}
+              className="px-4 py-2 rounded-xl bg-slate-200 dark:bg-slate-800 hover:bg-slate-300 dark:hover:bg-slate-700 text-slate-800 dark:text-slate-200 font-bold text-xs transition cursor-pointer"
+            >
+              {isMM ? 'အကောင့်သစ်ဖွင့်မည်' : 'Sign Up'}
+            </button>
+          </div>
         </div>
       )}
 
@@ -80,11 +131,11 @@ export const UserProfileView: React.FC<UserProfileViewProps> = ({
           <div className="flex items-center gap-4 sm:gap-5">
             <div className="relative">
               <img
-                src="https://images.unsplash.com/photo-1566492031773-4f4e44671857?w=300&auto=format&fit=crop&q=80"
+                src={displayAvatar}
                 alt="Profile Avatar"
                 className="w-18 h-18 sm:w-20 sm:h-20 rounded-2xl object-cover border-2 border-cyan-500 shadow-md shadow-cyan-500/20"
               />
-              {kycStatus === 'VERIFIED' && (
+              {activeKyc === 'VERIFIED' && (
                 <div
                   className="absolute -bottom-1 -right-1 p-1 bg-emerald-500 text-slate-950 rounded-full ring-2 ring-white dark:ring-slate-900 shadow-sm"
                   title="KYC Verified"
@@ -97,10 +148,10 @@ export const UserProfileView: React.FC<UserProfileViewProps> = ({
             <div className="space-y-1">
               <div className="flex items-center gap-2 flex-wrap">
                 <h1 className="text-lg sm:text-2xl font-black text-slate-900 dark:text-white tracking-tight">
-                  KyawZin_Gamer99
+                  {displayUsername}
                 </h1>
                 <span className="text-[10px] font-bold px-2 py-0.5 rounded-md bg-cyan-500/10 text-cyan-600 dark:text-cyan-400 border border-cyan-500/20 font-mono">
-                  ID: #GZ-88910
+                  {displayName}
                 </span>
                 {merchantSubscription?.isActive && (
                   <span className="px-2 py-0.5 rounded-md bg-gradient-to-r from-amber-500 via-yellow-400 to-amber-500 text-slate-950 text-[10px] font-black flex items-center gap-1 shadow-sm font-mono">
@@ -113,11 +164,11 @@ export const UserProfileView: React.FC<UserProfileViewProps> = ({
               <div className="flex flex-col sm:flex-row sm:items-center gap-1.5 sm:gap-4 text-xs text-slate-500 dark:text-slate-400">
                 <div className="flex items-center gap-1.5">
                   <Mail className="w-3.5 h-3.5 text-cyan-500" />
-                  <span>gamezaymm@gmail.com</span>
+                  <span>{displayEmail}</span>
                 </div>
                 <div className="flex items-center gap-1.5">
                   <Phone className="w-3.5 h-3.5 text-emerald-500" />
-                  <span>+95 9 450 012 345</span>
+                  <span>{displayPhone}</span>
                 </div>
               </div>
 
@@ -129,12 +180,12 @@ export const UserProfileView: React.FC<UserProfileViewProps> = ({
 
           {/* KYC Status Badge or Apply Button */}
           <div className="shrink-0 self-start sm:self-center">
-            {kycStatus === 'VERIFIED' ? (
+            {activeKyc === 'VERIFIED' ? (
               <div className="px-3.5 py-2 rounded-2xl bg-emerald-500/10 border border-emerald-500/30 text-emerald-600 dark:text-emerald-400 font-bold text-xs flex items-center gap-2 shadow-sm">
                 <ShieldCheck className="w-4 h-4 text-emerald-500" />
                 <span>{isMM ? '✓ KYC အတည်ပြုပြီး' : '✓ Verified'}</span>
               </div>
-            ) : kycStatus === 'PENDING' ? (
+            ) : activeKyc === 'PENDING' ? (
               <div className="px-3.5 py-2 rounded-2xl bg-amber-500/10 border border-amber-500/30 text-amber-600 dark:text-amber-400 font-bold text-xs flex items-center gap-2 shadow-sm">
                 <Clock className="w-4 h-4 text-amber-500 animate-spin" />
                 <span>{isMM ? '⏳ KYC စိစစ်ဆဲ' : '⏳ KYC Under Review'}</span>
@@ -153,6 +204,7 @@ export const UserProfileView: React.FC<UserProfileViewProps> = ({
           </div>
         </div>
       </div>
+
 
       {/* ======================================================== */}
       {/* 2. SELLER STUDIO ENTRY BANNER                            */}

@@ -8,6 +8,23 @@ export type UserRole = 'BUYER' | 'SELLER' | 'ADMIN';
 
 export type KycStatus = 'UNSUBMITTED' | 'PENDING' | 'VERIFIED' | 'REJECTED';
 
+export interface AuthUser {
+  id: string;
+  email: string;
+  fullName: string;
+  username: string;
+  phone?: string;
+  avatarUrl?: string;
+  kycStatus: KycStatus;
+  isProMerchant: boolean;
+  role: UserRole;
+  balanceMMK: number;
+  heldInEscrowMMK: number;
+  sellerRating: number;
+  totalRatings: number;
+  createdAt?: string;
+}
+
 export interface KycSubmission {
   id: string;
   userId: string;
