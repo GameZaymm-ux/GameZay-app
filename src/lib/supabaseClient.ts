@@ -2,50 +2,76 @@ import { createClient, SupabaseClient } from '@supabase/supabase-js';
 import { AccountListing, EscrowOrder, KycStatus, MerchantSubscription } from '../types';
 import { INITIAL_LISTINGS, INITIAL_ORDERS } from '../data/mockData';
 
-// Extract raw URL and Anon Key with fallback to dummy safe strings to prevent any init exception
+// Fallback dummy strings to prevent runtime/SSR crash if env vars are unset
+const DUMMY_SUPABASE_URL = 'https://placeholder.supabase.co';
+// Valid format base64 JWT payload so Supabase client parser never throws
+const DUMMY_SUPABASE_KEY = 'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZS1wbGFjZWhvbGRlciIsInJvbGUiOiJhbm9uIiwiZXhwIjoxOTk5OTk5OTk5fQ.placeholder';
+
+// Helper to safely get environment variable across Vite, Next.js, Node, and browser
+function getEnvVar(key: string): string {
+  try {
+    if (typeof process !== 'undefined' && process.env && process.env[key]) {
+      return String(process.env[key]).trim();
+    }
+  } catch {}
+
+  try {
+    if (typeof import.meta !== 'undefined' && (import.meta as any)?.env && (import.meta as any).env[key]) {
+      return String((import.meta as any).env[key]).trim();
+    }
+  } catch {}
+
+  try {
+    if (typeof window !== 'undefined' && (window as any)?.__ENV__ && (window as any).__ENV__[key]) {
+      return String((window as any).__ENV__[key]).trim();
+    }
+  } catch {}
+
+  return '';
+}
+
 const rawUrl =
-  (typeof process !== 'undefined' && process.env?.NEXT_PUBLIC_SUPABASE_URL) ||
-  (typeof import.meta !== 'undefined' && (import.meta as any)?.env?.VITE_SUPABASE_URL) ||
-  (typeof window !== 'undefined' && (window as any)?.__SUPABASE_URL__) ||
+  getEnvVar('NEXT_PUBLIC_SUPABASE_URL') ||
+  getEnvVar('VITE_SUPABASE_URL') ||
   'https://tusvbmvkkhiklbbggyrt.supabase.co';
 
 const rawKey =
-  (typeof process !== 'undefined' && process.env?.NEXT_PUBLIC_SUPABASE_ANON_KEY) ||
-  (typeof import.meta !== 'undefined' && (import.meta as any)?.env?.VITE_SUPABASE_ANON_KEY) ||
-  (typeof window !== 'undefined' && (window as any)?.__SUPABASE_KEY__) ||
+  getEnvVar('NEXT_PUBLIC_SUPABASE_ANON_KEY') ||
+  getEnvVar('VITE_SUPABASE_ANON_KEY') ||
   'sb_publishable_4kI2gAF6qrE-OyKZ4_7m8A_5L7OcFA-';
 
-// Sanitize URL
-const sanitizedUrl = (rawUrl || 'https://placeholder.supabase.co').replace(/\/rest\/v1\/?$/, '').trim();
-const sanitizedKey = (rawKey || 'placeholder-anon-key').trim();
+// Clean and sanitize URL (strip trailing /rest/v1/ or slashes)
+const sanitizedUrl = rawUrl ? rawUrl.replace(/\/rest\/v1\/?$/, '').replace(/\/+$/, '').trim() : '';
+const sanitizedKey = rawKey ? rawKey.trim() : '';
 
-// Determine if we have real credentials vs placeholder
+// Valid real configuration check
 export const isSupabaseConfigured = Boolean(
   sanitizedUrl &&
   sanitizedKey &&
-  !sanitizedUrl.includes('placeholder.supabase.co') &&
-  !sanitizedKey.includes('placeholder-anon-key')
+  sanitizedUrl !== DUMMY_SUPABASE_URL &&
+  sanitizedKey !== DUMMY_SUPABASE_KEY &&
+  !sanitizedUrl.includes('placeholder')
 );
 
-// Safe client instantiation: NEVER throws on import
+// Guaranteed Safe Client Creation (NEVER crashes upon import)
 let safeClient: SupabaseClient;
+
 try {
-  safeClient = createClient(
-    sanitizedUrl || 'https://placeholder.supabase.co',
-    sanitizedKey || 'placeholder-anon-key',
-    {
-      auth: {
-        persistSession: typeof window !== 'undefined',
-        autoRefreshToken: typeof window !== 'undefined',
-        detectSessionInUrl: typeof window !== 'undefined',
-      },
-    }
-  );
-} catch (e) {
-  console.warn('Supabase initialization safely recovered with mock client:', e);
-  // Create dummy client to ensure object reference is always valid
-  safeClient = createClient('https://placeholder.supabase.co', 'placeholder-key', {
-    auth: { persistSession: false },
+  const activeUrl = sanitizedUrl || DUMMY_SUPABASE_URL;
+  const activeKey = sanitizedKey || DUMMY_SUPABASE_KEY;
+  const isReal = isSupabaseConfigured;
+
+  safeClient = createClient(activeUrl, activeKey, {
+    auth: {
+      persistSession: isReal && typeof window !== 'undefined',
+      autoRefreshToken: isReal && typeof window !== 'undefined',
+      detectSessionInUrl: isReal && typeof window !== 'undefined',
+    },
+  });
+} catch (err) {
+  console.warn('Supabase initialization safely recovered with dummy client fallback:', err);
+  safeClient = createClient(DUMMY_SUPABASE_URL, DUMMY_SUPABASE_KEY, {
+    auth: { persistSession: false, autoRefreshToken: false, detectSessionInUrl: false },
   });
 }
 
@@ -92,7 +118,8 @@ export const DEFAULT_USER_PROFILE: SupabaseUserProfile = {
 
 /**
  * Safely fetches live marketplace listings from Supabase `listings` table
- * Falls back to INITIAL_LISTINGS if not configured, network fails, or table is empty
+ * Queries standard column names: id, seller_id, title, game_type, price, description, images, status
+ * Wrapped in try/catch and seamlessly falls back to INITIAL_LISTINGS
  */
 export async function fetchLiveListings(): Promise<AccountListing[]> {
   if (!isSupabaseConfigured || !supabase) {
@@ -102,33 +129,33 @@ export async function fetchLiveListings(): Promise<AccountListing[]> {
   try {
     const { data, error } = await supabase
       .from('listings')
-      .select('*')
+      .select('id, seller_id, seller_name, seller_avatar, seller_phone, title, game_type, price, price_mmk, price_usdt, description, images, image_urls, cover_image, banner_url, status, is_pro_merchant, is_verified_seller, views, rating, binding_status, attributes, credential_preview, order_prefix, created_at, bumped_at')
       .order('created_at', { ascending: false });
 
     if (error || !data || data.length === 0) {
       if (error && error.code !== 'PGRST116') {
-        console.info('Supabase listings notice (using fallback):', error.message);
+        console.info('Supabase listings table notice (using default mock data):', error.message);
       }
       return INITIAL_LISTINGS;
     }
 
     const mapped: AccountListing[] = data.map((item: any) => ({
-      id: item.id || `listing-${Date.now()}`,
-      orderPrefix: item.order_prefix || item.orderPrefix || 'GZ-',
+      id: String(item.id || `listing-${Date.now()}`),
+      orderPrefix: item.order_prefix || 'GZ-',
       gameType: item.game_type || item.gameType || 'mlbb',
       title: item.title || item.name || 'Game Account',
       description: item.description || '',
-      priceMMK: Number(item.price_mmk || item.price || item.priceMMK || 0),
-      priceUSDT: Number(item.price_usdt || item.priceUSDT || 0),
-      status: (item.status?.toUpperCase() === 'SOLD'
+      priceMMK: Number(item.price ?? item.price_mmk ?? item.priceMMK ?? 0),
+      priceUSDT: Number(item.price_usdt ?? item.priceUSDT ?? 0),
+      status: (String(item.status || '').toUpperCase() === 'SOLD'
         ? 'SOLD'
-        : item.status?.toUpperCase() === 'IN_ESCROW'
+        : String(item.status || '').toUpperCase() === 'IN_ESCROW'
         ? 'IN_ESCROW'
         : 'AVAILABLE'),
-      isVerifiedSeller: Boolean(item.is_verified_seller ?? item.isVerifiedSeller ?? true),
-      isProMerchant: Boolean(item.is_pro_merchant ?? item.isProMerchant ?? false),
+      isVerifiedSeller: Boolean(item.is_verified_seller ?? true),
+      isProMerchant: Boolean(item.is_pro_merchant ?? false),
       bumpedAt: item.bumped_at || item.bumpedAt,
-      instantDelivery: Boolean(item.instant_delivery ?? item.instantDelivery ?? true),
+      instantDelivery: Boolean(item.instant_delivery ?? true),
       views: Number(item.views || 250),
       rating: Number(item.rating || 4.9),
       seller: {
@@ -143,15 +170,15 @@ export async function fetchLiveListings(): Promise<AccountListing[]> {
         isProMerchant: Boolean(item.is_pro_merchant || item.seller?.isProMerchant),
         merchantBadge: item.merchant_badge || item.seller?.merchantBadge || 'PRO_GOLD',
       },
-      bindingStatus: item.binding_status || item.bindingStatus || 'Clean Bind / Email Transferable',
+      bindingStatus: item.binding_status || 'Clean Bind / Email Transferable',
       attributes: item.attributes || {},
       imageUrls: Array.isArray(item.images) && item.images.length > 0
         ? item.images
         : Array.isArray(item.image_urls) && item.image_urls.length > 0
         ? item.image_urls
         : ['https://images.unsplash.com/photo-1542751371-adc38448a05e?w=800&auto=format&fit=crop&q=80'],
-      bannerUrl: item.banner_url || item.bannerUrl || (Array.isArray(item.images) && item.images[0]) || 'https://images.unsplash.com/photo-1542751371-adc38448a05e?w=800&auto=format&fit=crop&q=80',
-      credentialPreview: item.credential_preview || item.credentialPreview || {
+      bannerUrl: item.banner_url || item.cover_image || (Array.isArray(item.images) && item.images[0]) || 'https://images.unsplash.com/photo-1542751371-adc38448a05e?w=800&auto=format&fit=crop&q=80',
+      credentialPreview: item.credential_preview || {
         authType: 'Moonton / Konami ID',
         maskedLogin: 'acc***@gmail.com',
         passwordMasked: '••••••••',
@@ -163,13 +190,14 @@ export async function fetchLiveListings(): Promise<AccountListing[]> {
 
     return mapped.length > 0 ? mapped : INITIAL_LISTINGS;
   } catch (err) {
-    console.warn('Supabase fetch listings error, using fallback mock listings:', err);
+    console.warn('Supabase fetch listings error, fallback to mock listings:', err);
     return INITIAL_LISTINGS;
   }
 }
 
 /**
- * Safely inserts a new listing into Supabase `listings` table if connected
+ * Safely inserts a newly created account listing into Supabase `listings` table
+ * Uses standard field names: id, seller_id, title, game_type, price, description, images, status
  */
 export async function createLiveListing(listing: AccountListing): Promise<{ success: boolean; data?: any; error?: string }> {
   if (!isSupabaseConfigured || !supabase) {
@@ -178,6 +206,11 @@ export async function createLiveListing(listing: AccountListing): Promise<{ succ
 
   try {
     const payload = {
+      id: listing.id,
+      seller_id: listing.seller.id,
+      seller_name: listing.seller.name,
+      seller_avatar: listing.seller.avatar,
+      seller_phone: listing.seller.phone,
       title: listing.title,
       game_type: listing.gameType,
       price: listing.priceMMK,
@@ -185,11 +218,12 @@ export async function createLiveListing(listing: AccountListing): Promise<{ succ
       price_usdt: listing.priceUSDT || 0,
       description: listing.description,
       images: listing.imageUrls || [],
-      seller_id: listing.seller.id,
-      seller_name: listing.seller.name,
       status: listing.status || 'AVAILABLE',
-      is_pro_merchant: listing.isProMerchant || false,
+      is_pro_merchant: Boolean(listing.isProMerchant || listing.seller?.isProMerchant),
+      is_verified_seller: Boolean(listing.isVerifiedSeller),
+      binding_status: listing.bindingStatus,
       attributes: listing.attributes || {},
+      credential_preview: listing.credentialPreview || {},
       created_at: listing.createdAt || new Date().toISOString(),
     };
 
@@ -200,7 +234,7 @@ export async function createLiveListing(listing: AccountListing): Promise<{ succ
       .maybeSingle();
 
     if (error) {
-      console.warn('Supabase insert listing note (locally active):', error.message);
+      console.warn('Supabase insert listing note (locally saved):', error.message);
       return { success: false, error: error.message };
     }
 
@@ -215,6 +249,7 @@ export const insertLiveListing = createLiveListing;
 
 /**
  * Safely fetches orders from Supabase `orders` table
+ * Queries standard column names: id, order_number, listing_id, buyer_name, seller_name, status, etc.
  */
 export async function fetchLiveOrders(): Promise<EscrowOrder[]> {
   if (!isSupabaseConfigured || !supabase) {
@@ -232,7 +267,7 @@ export async function fetchLiveOrders(): Promise<EscrowOrder[]> {
     }
 
     const mapped: EscrowOrder[] = data.map((item: any) => ({
-      id: item.id || `ord-${Date.now()}`,
+      id: String(item.id || `ord-${Date.now()}`),
       orderNumber: item.order_number || item.orderNumber || `GZ-${Math.floor(100000 + Math.random() * 900000)}`,
       listingId: item.listing_id || item.listingId || 'ml-01',
       listing: item.listing || INITIAL_LISTINGS[0],
@@ -240,8 +275,8 @@ export async function fetchLiveOrders(): Promise<EscrowOrder[]> {
       buyerPhone: item.buyer_phone || item.buyerPhone || '0912345678',
       sellerName: item.seller_name || item.sellerName || 'Seller',
       sellerPhone: item.seller_phone || item.sellerPhone || '09798889901',
-      amountMMK: Number(item.amount_mmk || item.amountMMK || item.amount || 0),
-      amountUSDT: Number(item.amount_usdt || item.amountUSDT || 0),
+      amountMMK: Number(item.amount ?? item.amount_mmk ?? item.amountMMK ?? 0),
+      amountUSDT: Number(item.amount_usdt ?? item.amountUSDT ?? 0),
       paymentMethod: item.payment_method || item.paymentMethod || 'KBZ_PAY',
       paymentSlipUrl: item.payment_slip_url || item.paymentSlipUrl,
       transactionId: item.transaction_id || item.transactionId,
@@ -264,6 +299,7 @@ export async function fetchLiveOrders(): Promise<EscrowOrder[]> {
 
 /**
  * Safely fetches profile data from Supabase `profiles` table
+ * Queries standard column names: id, full_name, phone, kyc_status, is_pro_merchant, balance_mmk, etc.
  */
 export async function fetchLiveProfile(userId: string = 'current-user-1'): Promise<SupabaseUserProfile> {
   if (!isSupabaseConfigured || !supabase) {
