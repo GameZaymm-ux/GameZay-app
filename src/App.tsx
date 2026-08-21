@@ -3,7 +3,7 @@
  * SPDX-License-Identifier: Apache-2.0
  */
 
-import React, { useState, useMemo } from 'react';
+import React, { useState, useMemo, useEffect } from 'react';
 import { LanguageProvider, useLanguage } from './context/LanguageContext';
 import { ThemeProvider, useTheme } from './context/ThemeContext';
 import { Navbar } from './components/Navbar';
@@ -30,6 +30,13 @@ import { PWAInstallBanner } from './components/PWAInstallBanner';
 import { Footer } from './components/Footer';
 import { ErrorBoundary } from './components/ErrorBoundary';
 import { INITIAL_LISTINGS, INITIAL_ORDERS, INITIAL_PAYOUTS, INITIAL_KYC_SUBMISSIONS } from './data/mockData';
+import {
+  fetchLiveListings,
+  fetchLiveOrders,
+  fetchLiveProfile,
+  isSupabaseConfigured,
+  supabase,
+} from './lib/supabaseClient';
 import {
   AccountListing,
   ChatMessage,
@@ -116,6 +123,66 @@ function MainApp() {
   const [isSellModalOpen, setIsSellModalOpen] = useState(false);
   const [isSettingsOpen, setIsSettingsOpen] = useState(false);
   const [savedListingIds, setSavedListingIds] = useState<string[]>(['ef-02', 'ml-01', 'pubg-01']);
+
+  // Fetch live Supabase data on mount with full SSR / fallback protection
+  useEffect(() => {
+    let isMounted = true;
+
+    async function loadSupabaseData() {
+      try {
+        const [liveListings, liveOrders, liveProfile] = await Promise.all([
+          fetchLiveListings(),
+          fetchLiveOrders(),
+          fetchLiveProfile('current-user-1'),
+        ]);
+
+        if (isMounted) {
+          if (liveListings && liveListings.length > 0) {
+            setListings(liveListings);
+          }
+          if (liveOrders && liveOrders.length > 0) {
+            setOrders(liveOrders);
+          }
+          if (liveProfile) {
+            if (liveProfile.kycStatus) {
+              setKycStatus(liveProfile.kycStatus);
+            }
+            if (liveProfile.subscription) {
+              setMerchantSubscription(liveProfile.subscription);
+            }
+          }
+        }
+      } catch (err) {
+        console.warn('Supabase initial fetch gracefully defaulted:', err);
+      }
+    }
+
+    loadSupabaseData();
+
+    // Setup Supabase Realtime channel if available
+    let channel: any = null;
+    try {
+      if (supabase && typeof window !== 'undefined') {
+        channel = supabase
+          .channel('public:listings')
+          .on('postgres_changes', { event: '*', schema: 'public', table: 'listings' }, () => {
+            fetchLiveListings().then((updated) => {
+              if (isMounted && updated?.length) setListings(updated);
+            });
+          })
+          .subscribe();
+      }
+    } catch {
+      // ignore realtime connection error
+    }
+
+    return () => {
+      isMounted = false;
+      if (channel && supabase) {
+        supabase.removeChannel(channel).catch(() => {});
+      }
+    };
+  }, []);
 
   // KYC Gate Check Handler for Selling Accounts (+ Button)
   const handleOpenSellModal = () => {

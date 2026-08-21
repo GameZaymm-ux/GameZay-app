@@ -236,11 +236,17 @@ export const SellerDashboard: React.FC<SellerDashboardProps> = ({
   const handleBumpClick = (listingId: string) => {
     if (onBumpListing) {
       onBumpListing(listingId);
-      confetti({
-        particleCount: 50,
-        spread: 60,
-        origin: { y: 0.7 },
-      });
+      try {
+        if (typeof window !== 'undefined') {
+          confetti({
+            particleCount: 50,
+            spread: 60,
+            origin: { y: 0.7 },
+          });
+        }
+      } catch {
+        // ignore
+      }
       setBumpToast({ id: listingId, message: t('proMerchant.bumpSuccess') });
       setTimeout(() => setBumpToast(null), 3500);
     }
@@ -249,11 +255,17 @@ export const SellerDashboard: React.FC<SellerDashboardProps> = ({
   const handleSubscribeClick = () => {
     if (onSubscribeMerchant) {
       onSubscribeMerchant();
-      confetti({
-        particleCount: 120,
-        spread: 80,
-        origin: { y: 0.6 },
-      });
+      try {
+        if (typeof window !== 'undefined') {
+          confetti({
+            particleCount: 120,
+            spread: 80,
+            origin: { y: 0.6 },
+          });
+        }
+      } catch {
+        // ignore
+      }
     }
   };
 
@@ -1796,3 +1808,5 @@ export const SellerDashboard: React.FC<SellerDashboardProps> = ({
     </div>
   );
 };
+
+export default SellerDashboard;

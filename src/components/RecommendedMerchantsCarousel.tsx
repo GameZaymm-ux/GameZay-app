@@ -49,17 +49,24 @@ export const RecommendedMerchantsCarousel: React.FC<RecommendedMerchantsCarousel
       }
     >();
 
-    listings.forEach((item) => {
+    (listings || []).forEach((item) => {
+      if (!item) return;
       if (item.isProMerchant || item.seller?.isProMerchant) {
-        const sellerId = item.seller.id || item.seller.name;
+        const sellerId = item.seller?.id || item.seller?.name || item.id || 'pro_merchant';
+        const sellerName = item.seller?.name || 'Verified Merchant';
+        const sellerAvatar = item.seller?.avatar || 'https://images.unsplash.com/photo-1535713875002-d1d0cf377fde?w=100&auto=format&fit=crop&q=80';
+        const trades = item.seller?.tradesCompleted || 100;
+        const rating = typeof item.seller?.rating === 'number' ? item.seller.rating : 4.9;
+        const responseMin = item.seller?.responseMinutes || 3;
+
         if (!merchantMap.has(sellerId)) {
           merchantMap.set(sellerId, {
             id: sellerId,
-            name: item.seller.name,
-            avatar: item.seller.avatar,
-            tradesCompleted: item.seller.tradesCompleted || 100,
-            rating: item.seller.rating || 4.9,
-            responseMinutes: item.seller.responseMinutes || 3,
+            name: sellerName,
+            avatar: sellerAvatar,
+            tradesCompleted: trades,
+            rating: rating,
+            responseMinutes: responseMin,
             sampleListing: item,
             totalListings: 1,
           });
@@ -293,3 +300,5 @@ export const RecommendedMerchantsCarousel: React.FC<RecommendedMerchantsCarousel
     </div>
   );
 };
+
+export default RecommendedMerchantsCarousel;

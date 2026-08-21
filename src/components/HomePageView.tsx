@@ -45,15 +45,15 @@ export const HomePageView: React.FC<HomePageViewProps> = ({
   const [activeBannerSlide, setActiveBannerSlide] = useState(0);
 
   // Top featured / trending listings
-  const trendingListings = listings.slice(0, 6);
+  const trendingListings = (listings || []).slice(0, 6);
 
   const gameCategories: { id: GameType | 'all'; name: string; nameMM: string; icon: string; count: number; bg: string }[] = [
-    { id: 'mlbb', name: 'Mobile Legends', nameMM: 'မိုဘိုင်းလဲဂျန်း', icon: '⚔️', count: listings.filter(l => l.gameType === 'mlbb').length, bg: 'from-amber-500/20 to-orange-500/10' },
-    { id: 'efootball', name: 'eFootball 2026', nameMM: 'အီးဖူဘော', icon: '⚽', count: listings.filter(l => l.gameType === 'efootball').length, bg: 'from-blue-500/20 to-cyan-500/10' },
-    { id: 'pubg', name: 'PUBG Mobile', nameMM: 'ပတ်ဘ်ဂျီ', icon: '🎯', count: listings.filter(l => l.gameType === 'pubg').length, bg: 'from-orange-500/20 to-rose-500/10' },
-    { id: 'coc', name: 'Clash of Clans', nameMM: 'စီအိုစီ', icon: '🏰', count: listings.filter(l => l.gameType === 'coc').length, bg: 'from-yellow-500/20 to-amber-500/10' },
-    { id: 'freefire', name: 'Free Fire', nameMM: 'ဖရီးဖိုင်းယား', icon: '🔥', count: listings.filter(l => l.gameType === 'freefire').length, bg: 'from-rose-500/20 to-red-500/10' },
-    { id: 'genshin', name: 'Genshin Impact', nameMM: 'ဂျန်ရှင်း', icon: '✨', count: listings.filter(l => l.gameType === 'genshin').length, bg: 'from-purple-500/20 to-indigo-500/10' },
+    { id: 'mlbb', name: 'Mobile Legends', nameMM: 'မိုဘိုင်းလဲဂျန်း', icon: '⚔️', count: (listings || []).filter(l => l?.gameType === 'mlbb').length, bg: 'from-amber-500/20 to-orange-500/10' },
+    { id: 'efootball', name: 'eFootball 2026', nameMM: 'အီးဖူဘော', icon: '⚽', count: (listings || []).filter(l => l?.gameType === 'efootball').length, bg: 'from-blue-500/20 to-cyan-500/10' },
+    { id: 'pubg', name: 'PUBG Mobile', nameMM: 'ပတ်ဘ်ဂျီ', icon: '🎯', count: (listings || []).filter(l => l?.gameType === 'pubg').length, bg: 'from-orange-500/20 to-rose-500/10' },
+    { id: 'coc', name: 'Clash of Clans', nameMM: 'စီအိုစီ', icon: '🏰', count: (listings || []).filter(l => l?.gameType === 'coc').length, bg: 'from-yellow-500/20 to-amber-500/10' },
+    { id: 'freefire', name: 'Free Fire', nameMM: 'ဖရီးဖိုင်းယား', icon: '🔥', count: (listings || []).filter(l => l?.gameType === 'freefire').length, bg: 'from-rose-500/20 to-red-500/10' },
+    { id: 'genshin', name: 'Genshin Impact', nameMM: 'ဂျန်ရှင်း', icon: '✨', count: (listings || []).filter(l => l?.gameType === 'genshin').length, bg: 'from-purple-500/20 to-indigo-500/10' },
   ];
 
   const topSellers = [
@@ -438,3 +438,5 @@ export const HomePageView: React.FC<HomePageViewProps> = ({
     </div>
   );
 };
+
+export default HomePageView;

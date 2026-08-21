@@ -410,3 +410,5 @@ export const UserProfileView: React.FC<UserProfileViewProps> = ({
     </div>
   );
 };
+
+export default UserProfileView;

@@ -9,19 +9,29 @@ export const PWAInstallBanner: React.FC = () => {
   const [isIOS, setIsIOS] = useState(false);
 
   useEffect(() => {
-    // Check if dismissed in this session
-    const dismissed = sessionStorage.getItem('gamezay_pwa_dismissed');
-    if (dismissed) return;
+    if (typeof window === 'undefined') return;
 
-    // Detect iOS Safari
-    const userAgent = window.navigator.userAgent.toLowerCase();
-    const isIosDevice = /iphone|ipad|ipod/.test(userAgent);
-    const isStandalone = (window.navigator as any).standalone;
+    try {
+      // Check if dismissed in this session
+      const dismissed = sessionStorage?.getItem('gamezay_pwa_dismissed');
+      if (dismissed) return;
+    } catch {
+      // ignore storage access errors
+    }
 
-    if (isIosDevice && !isStandalone) {
-      setIsIOS(true);
-      setShowBanner(true);
-      return;
+    try {
+      // Detect iOS Safari
+      const userAgent = window.navigator?.userAgent?.toLowerCase() || '';
+      const isIosDevice = /iphone|ipad|ipod/.test(userAgent);
+      const isStandalone = (window.navigator as any)?.standalone;
+
+      if (isIosDevice && !isStandalone) {
+        setIsIOS(true);
+        setShowBanner(true);
+        return;
+      }
+    } catch {
+      // ignore UA parsing errors
     }
 
     // Android / Desktop Chrome PWA prompt listener
@@ -37,18 +47,26 @@ export const PWAInstallBanner: React.FC = () => {
 
   const handleInstallClick = async () => {
     if (deferredPrompt) {
-      deferredPrompt.prompt();
-      const { outcome } = await deferredPrompt.userChoice;
-      if (outcome === 'accepted') {
+      try {
+        deferredPrompt.prompt();
+        const { outcome } = await deferredPrompt.userChoice;
+        if (outcome === 'accepted') {
+          setShowBanner(false);
+        }
+        setDeferredPrompt(null);
+      } catch {
         setShowBanner(false);
       }
-      setDeferredPrompt(null);
     }
   };
 
   const handleDismiss = () => {
     setShowBanner(false);
-    sessionStorage.setItem('gamezay_pwa_dismissed', 'true');
+    try {
+      sessionStorage?.setItem('gamezay_pwa_dismissed', 'true');
+    } catch {
+      // ignore
+    }
   };
 
   if (!showBanner) return null;
@@ -110,3 +128,5 @@ export const PWAInstallBanner: React.FC = () => {
     </div>
   );
 };
+
+export default PWAInstallBanner;

@@ -53,24 +53,32 @@ export const ListingCard: React.FC<ListingCardProps> = ({
 
   // Render game-specific feature tags (compact for 2-column mobile and multi-column desktop)
   const renderSpecPills = () => {
+    if (!listing?.attributes) return null;
+
     if (listing.gameType === 'efootball') {
       const attrs = listing.attributes as EfootballAttributes;
       return (
         <div className="flex flex-wrap gap-1 mt-1.5 sm:mt-2">
-          <span className="px-1.5 sm:px-2 py-0.5 rounded-md bg-blue-50 dark:bg-blue-950/80 border border-blue-200 dark:border-blue-500/30 text-blue-700 dark:text-blue-300 text-[10px] sm:text-[11px] font-bold">
-            ⚡ {attrs.squadRating} OVR
-          </span>
-          <span className="px-1.5 sm:px-2 py-0.5 rounded-md bg-purple-50 dark:bg-purple-950/80 border border-purple-200 dark:border-purple-500/30 text-purple-700 dark:text-purple-300 text-[10px] sm:text-[11px] font-bold">
-            🌟 {attrs.epicCount} Epics
-          </span>
-          {attrs.coins !== undefined && attrs.coins > 0 && (
+          {attrs?.squadRating !== undefined && (
+            <span className="px-1.5 sm:px-2 py-0.5 rounded-md bg-blue-50 dark:bg-blue-950/80 border border-blue-200 dark:border-blue-500/30 text-blue-700 dark:text-blue-300 text-[10px] sm:text-[11px] font-bold">
+              ⚡ {attrs.squadRating} OVR
+            </span>
+          )}
+          {attrs?.epicCount !== undefined && (
+            <span className="px-1.5 sm:px-2 py-0.5 rounded-md bg-purple-50 dark:bg-purple-950/80 border border-purple-200 dark:border-purple-500/30 text-purple-700 dark:text-purple-300 text-[10px] sm:text-[11px] font-bold">
+              🌟 {attrs.epicCount} Epics
+            </span>
+          )}
+          {attrs?.coins !== undefined && attrs.coins > 0 && (
             <span className="px-1.5 sm:px-2 py-0.5 rounded-md bg-amber-50 dark:bg-amber-950/80 border border-amber-200 dark:border-amber-500/30 text-amber-700 dark:text-amber-300 text-[10px] sm:text-[11px] font-bold flex items-center gap-0.5">
               🪙 {attrs.coins.toLocaleString()}
             </span>
           )}
-          <span className="hidden sm:inline-block px-1.5 sm:px-2 py-0.5 rounded-md bg-slate-100 dark:bg-slate-800 text-slate-700 dark:text-slate-300 text-[10px] sm:text-[11px]">
-            🏆 Div {attrs.division}
-          </span>
+          {attrs?.division !== undefined && (
+            <span className="hidden sm:inline-block px-1.5 sm:px-2 py-0.5 rounded-md bg-slate-100 dark:bg-slate-800 text-slate-700 dark:text-slate-300 text-[10px] sm:text-[11px]">
+              🏆 Div {attrs.division}
+            </span>
+          )}
         </div>
       );
     }
@@ -79,32 +87,43 @@ export const ListingCard: React.FC<ListingCardProps> = ({
       const attrs = listing.attributes as MLBBAttributes;
       return (
         <div className="flex flex-wrap gap-1 mt-1.5 sm:mt-2">
-          <span className="px-1.5 sm:px-2 py-0.5 rounded-md bg-amber-50 dark:bg-amber-950/80 border border-amber-200 dark:border-amber-500/30 text-amber-700 dark:text-amber-300 text-[10px] sm:text-[11px] font-bold truncate max-w-[120px]">
-            👑 {attrs.currentRank}
-          </span>
-          <span className="px-1.5 sm:px-2 py-0.5 rounded-md bg-emerald-50 dark:bg-emerald-950/80 border border-emerald-200 dark:border-emerald-500/30 text-emerald-700 dark:text-emerald-300 text-[10px] sm:text-[11px] font-bold">
-            🎯 {attrs.winRate}% WR
-          </span>
-          <span className="px-1.5 sm:px-2 py-0.5 rounded-md bg-purple-50 dark:bg-purple-950/80 border border-purple-200 dark:border-purple-500/30 text-purple-700 dark:text-purple-300 text-[10px] sm:text-[11px]">
-            ✨ {attrs.collectorSkins} Skins
-          </span>
+          {attrs?.currentRank && (
+            <span className="px-1.5 sm:px-2 py-0.5 rounded-md bg-amber-50 dark:bg-amber-950/80 border border-amber-200 dark:border-amber-500/30 text-amber-700 dark:text-amber-300 text-[10px] sm:text-[11px] font-bold truncate max-w-[120px]">
+              👑 {attrs.currentRank}
+            </span>
+          )}
+          {attrs?.winRate !== undefined && (
+            <span className="px-1.5 sm:px-2 py-0.5 rounded-md bg-emerald-50 dark:bg-emerald-950/80 border border-emerald-200 dark:border-emerald-500/30 text-emerald-700 dark:text-emerald-300 text-[10px] sm:text-[11px] font-bold">
+              🎯 {attrs.winRate}% WR
+            </span>
+          )}
+          {attrs?.collectorSkins !== undefined && (
+            <span className="px-1.5 sm:px-2 py-0.5 rounded-md bg-purple-50 dark:bg-purple-950/80 border border-purple-200 dark:border-purple-500/30 text-purple-700 dark:text-purple-300 text-[10px] sm:text-[11px]">
+              ✨ {attrs.collectorSkins} Skins
+            </span>
+          )}
         </div>
       );
     }
 
     if (listing.gameType === 'pubg') {
       const attrs = listing.attributes as PUBGAttributes;
+      const glacierStr = attrs?.glacierLevel ? String(attrs.glacierLevel).split(' ')[0] : 'Max';
       return (
         <div className="flex flex-wrap gap-1 mt-1.5 sm:mt-2">
           <span className="px-1.5 sm:px-2 py-0.5 rounded-md bg-cyan-50 dark:bg-cyan-950/80 border border-cyan-200 dark:border-cyan-500/30 text-cyan-700 dark:text-cyan-300 text-[10px] sm:text-[11px] font-bold truncate max-w-[120px]">
-            ❄️ {attrs.glacierLevel.split(' ')[0]}
+            ❄️ {glacierStr}
           </span>
-          <span className="px-1.5 sm:px-2 py-0.5 rounded-md bg-orange-50 dark:bg-orange-950/80 border border-orange-200 dark:border-orange-500/30 text-orange-700 dark:text-orange-300 text-[10px] sm:text-[11px] font-bold">
-            🎖️ Lvl {attrs.level}
-          </span>
-          <span className="px-1.5 sm:px-2 py-0.5 rounded-md bg-rose-50 dark:bg-rose-950/80 border border-rose-200 dark:border-rose-500/30 text-rose-700 dark:text-rose-300 text-[10px] sm:text-[11px]">
-            🦹 {attrs.mythicFashion} Myth
-          </span>
+          {attrs?.level !== undefined && (
+            <span className="px-1.5 sm:px-2 py-0.5 rounded-md bg-orange-50 dark:bg-orange-950/80 border border-orange-200 dark:border-orange-500/30 text-orange-700 dark:text-orange-300 text-[10px] sm:text-[11px] font-bold">
+              🎖️ Lvl {attrs.level}
+            </span>
+          )}
+          {attrs?.mythicFashion !== undefined && (
+            <span className="px-1.5 sm:px-2 py-0.5 rounded-md bg-rose-50 dark:bg-rose-950/80 border border-rose-200 dark:border-rose-500/30 text-rose-700 dark:text-rose-300 text-[10px] sm:text-[11px]">
+              🦹 {attrs.mythicFashion} Myth
+            </span>
+          )}
         </div>
       );
     }
@@ -113,21 +132,25 @@ export const ListingCard: React.FC<ListingCardProps> = ({
       const attrs = listing.attributes as COCAttributes;
       return (
         <div className="flex flex-wrap gap-1 mt-1.5 sm:mt-2">
-          <span className="px-1.5 sm:px-2 py-0.5 rounded-md bg-yellow-50 dark:bg-yellow-950/80 border border-yellow-200 dark:border-yellow-500/30 text-yellow-800 dark:text-yellow-300 text-[10px] sm:text-[11px] font-bold">
-            🏰 TH {attrs.townHall}
-          </span>
+          {attrs?.townHall !== undefined && (
+            <span className="px-1.5 sm:px-2 py-0.5 rounded-md bg-yellow-50 dark:bg-yellow-950/80 border border-yellow-200 dark:border-yellow-500/30 text-yellow-800 dark:text-yellow-300 text-[10px] sm:text-[11px] font-bold">
+              🏰 TH {attrs.townHall}
+            </span>
+          )}
           <span className="px-1.5 sm:px-2 py-0.5 rounded-md bg-indigo-50 dark:bg-indigo-950/80 border border-indigo-200 dark:border-indigo-500/30 text-indigo-700 dark:text-indigo-300 text-[10px] sm:text-[11px] font-bold">
-            👑 K{attrs.kingLevel}/Q{attrs.queenLevel}
+            👑 K{attrs?.kingLevel ?? 0}/Q{attrs?.queenLevel ?? 0}
           </span>
-          <span className="px-1.5 sm:px-2 py-0.5 rounded-md bg-emerald-50 dark:bg-emerald-950/80 border border-emerald-200 dark:border-emerald-500/30 text-emerald-700 dark:text-emerald-300 text-[10px] sm:text-[11px]">
-            💎 {attrs.gems.toLocaleString()}
-          </span>
+          {attrs?.gems !== undefined && (
+            <span className="px-1.5 sm:px-2 py-0.5 rounded-md bg-emerald-50 dark:bg-emerald-950/80 border border-emerald-200 dark:border-emerald-500/30 text-emerald-700 dark:text-emerald-300 text-[10px] sm:text-[11px]">
+              💎 {Number(attrs.gems).toLocaleString()}
+            </span>
+          )}
         </div>
       );
     }
 
     if (listing.gameType === 'freefire') {
-      const attrs = listing.attributes as Record<string, any>;
+      const attrs = (listing.attributes || {}) as Record<string, any>;
       return (
         <div className="flex flex-wrap gap-1 mt-1.5 sm:mt-2">
           <span className="px-1.5 sm:px-2 py-0.5 rounded-md bg-rose-50 dark:bg-rose-950/80 border border-rose-200 dark:border-rose-500/30 text-rose-700 dark:text-rose-300 text-[10px] sm:text-[11px] font-bold">
@@ -144,7 +167,7 @@ export const ListingCard: React.FC<ListingCardProps> = ({
     }
 
     if (listing.gameType === 'genshin') {
-      const attrs = listing.attributes as Record<string, any>;
+      const attrs = (listing.attributes || {}) as Record<string, any>;
       return (
         <div className="flex flex-wrap gap-1 mt-1.5 sm:mt-2">
           <span className="px-1.5 sm:px-2 py-0.5 rounded-md bg-purple-50 dark:bg-purple-950/80 border border-purple-200 dark:border-purple-500/30 text-purple-700 dark:text-purple-300 text-[10px] sm:text-[11px] font-bold">
@@ -261,8 +284,8 @@ export const ListingCard: React.FC<ListingCardProps> = ({
             <div className="flex items-center gap-1.5 min-w-0">
               <div className="relative shrink-0">
                 <img
-                  src={listing.seller.avatar}
-                  alt={listing.seller.name}
+                  src={listing.seller?.avatar || 'https://images.unsplash.com/photo-1535713875002-d1d0cf377fde?w=100&auto=format&fit=crop&q=80'}
+                  alt={listing.seller?.name || 'Seller'}
                   className={`w-4 h-4 sm:w-5 sm:h-5 rounded-full object-cover border ${
                     isPro
                       ? 'border-amber-400 ring-1 ring-amber-400/50'
@@ -274,7 +297,7 @@ export const ListingCard: React.FC<ListingCardProps> = ({
                 )}
               </div>
               <span className="text-slate-700 dark:text-slate-300 font-medium truncate max-w-[80px] sm:max-w-[110px]">
-                {listing.seller.name}
+                {listing.seller?.name || 'Verified Seller'}
               </span>
               {isPro ? (
                 <span
@@ -293,7 +316,7 @@ export const ListingCard: React.FC<ListingCardProps> = ({
 
             <div className="flex items-center gap-0.5 sm:gap-1 text-amber-500 font-bold text-[10px] sm:text-[11px] shrink-0 font-mono">
               <Star className="w-3 h-3 fill-amber-400" />
-              <span>{listing.seller.rating.toFixed(1)}</span>
+              <span>{typeof listing.seller?.rating === 'number' ? listing.seller.rating.toFixed(1) : '5.0'}</span>
             </div>
           </div>
 
